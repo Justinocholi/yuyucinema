@@ -1,3 +1,11 @@
+export interface ChannelScheduleItem {
+  episodeNumber: number;
+  title: string;
+  episode: string;
+  startsAt: string;
+  endsAt: string;
+}
+
 export interface AnimeLiveChannel {
   id: string;
   name: string;
@@ -6,6 +14,12 @@ export interface AnimeLiveChannel {
   categoryLabel: string;
   logo: string;
   banner: string;
+  seriesTitle?: string;
+  anilistId?: number;
+  audio?: "sub" | "dub";
+  startEpisode?: number;
+  totalEpisodes?: number;
+  episodeDurationMinutes?: number;
   nowPlaying: {
     title: string;
     episode: string;
@@ -26,6 +40,18 @@ export interface AnimeLiveChannel {
   badge?: string;
 }
 
+export const CINEMA_PLAYLIST = [
+  { anilistId: 21519, title: "Your Name. (Kimi no Na wa)", runtime: 107, desc: "Two high schoolers who have never met share a magical connection through their dreams in Makoto Shinkai's masterpiece." },
+  { anilistId: 20954, title: "A Silent Voice (Koe no Katachi)", runtime: 130, desc: "A former bully seeks redemption and reaches out to the deaf girl he tormented years earlier in an emotional journey." },
+  { anilistId: 199, title: "Spirited Away", runtime: 125, desc: "During her family's move to the suburbs, a 10-year-old girl wanders into a magical world ruled by spirits, gods, and witches." },
+  { anilistId: 164, title: "Princess Mononoke", runtime: 134, desc: "Ashitaka finds himself in the middle of a war between forest gods and a tatara mining colony in this Studio Ghibli epic." },
+  { anilistId: 431, title: "Howl's Moving Castle", runtime: 119, desc: "When an unconfident young woman is cursed with an old body by a spiteful witch, she encounters the legendary wizard Howl." },
+  { anilistId: 106286, title: "Weathering With You (Tenki no Ko)", runtime: 112, desc: "A high-school runaway in Tokyo meets a girl who appears to be able to manipulate the weather with her heart." },
+  { anilistId: 145945, title: "Suzume (Suzume no Tojimari)", runtime: 122, desc: "A 17-year-old girl named Suzume journeys across Japan closing magical doors that unleash catastrophic disasters." },
+  { anilistId: 131573, title: "Jujutsu Kaisen 0", runtime: 105, desc: "Yuta Okkotsu gains control of an extremely powerful Cursed Spirit and enrolls in Tokyo Jujutsu High School." },
+  { anilistId: 112151, title: "Demon Slayer: Mugen Train", runtime: 117, desc: "Tanjiro, Nezuko, and the Flame Hashira Kyojuro Rengoku face the terrifying Enmu aboard the Infinity Train." },
+];
+
 export const ANIME_CHANNELS: AnimeLiveChannel[] = [
   {
     id: "toonami-aftermath",
@@ -33,6 +59,12 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "TOON-01",
     category: "retro",
     categoryLabel: "Classic & Retro",
+    seriesTitle: "Cowboy Bebop",
+    anilistId: 1,
+    audio: "sub",
+    startEpisode: 1,
+    totalEpisodes: 26,
+    episodeDurationMinutes: 25,
     logo: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
@@ -44,8 +76,8 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
       endsAt: "10:00 AM",
     },
     nextUp: {
-      title: "Yu Yu Hakusho",
-      episode: "Episode 21: Yusuke's Life or Death Match",
+      title: "Cowboy Bebop",
+      episode: "Session 6: Sympathy for the Devil",
       startsAt: "10:00 AM",
     },
     streamUrl: "https://vidnest.fun/anime/1/5/sub",
@@ -60,19 +92,25 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "CR-02",
     category: "shonen",
     categoryLabel: "Shonen & Action",
+    seriesTitle: "Jujutsu Kaisen",
+    anilistId: 113415,
+    audio: "sub",
+    startEpisode: 1,
+    totalEpisodes: 24,
+    episodeDurationMinutes: 25,
     logo: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
       title: "Jujutsu Kaisen",
-      episode: "Season 2: Shibuya Incident Battle",
-      description: "Gojo Satoru faces curses inside Shibuya Station as the battle intensifies.",
+      episode: "Episode 1: Ryomen Sukuna",
+      description: "Yuji Itadori swallows a cursed finger to save his friends and gains immense cursed energy.",
       progressPercent: 68,
       startsAt: "09:40 AM",
       endsAt: "10:05 AM",
     },
     nextUp: {
-      title: "Demon Slayer: Kimetsu no Yaiba",
-      episode: "Hashira Training Arc - Episode 3",
+      title: "Jujutsu Kaisen",
+      episode: "Episode 2: For Myself",
       startsAt: "10:05 AM",
     },
     streamUrl: "https://vidnest.fun/anime/113415/1/sub",
@@ -87,6 +125,12 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "DBZ-03",
     category: "marathon",
     categoryLabel: "24/7 Marathon",
+    seriesTitle: "Dragon Ball Z",
+    anilistId: 813,
+    audio: "dub",
+    startEpisode: 80,
+    totalEpisodes: 291,
+    episodeDurationMinutes: 25,
     logo: "https://images.unsplash.com/photo-1569003339405-ea396a5a8a90?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1569003339405-ea396a5a8a90?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
@@ -114,6 +158,12 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "NAR-04",
     category: "marathon",
     categoryLabel: "24/7 Marathon",
+    seriesTitle: "Naruto Shippuden",
+    anilistId: 1735,
+    audio: "sub",
+    startEpisode: 150,
+    totalEpisodes: 500,
+    episodeDurationMinutes: 25,
     logo: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
@@ -141,6 +191,12 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "OP-05",
     category: "marathon",
     categoryLabel: "24/7 Marathon",
+    seriesTitle: "One Piece",
+    anilistId: 21,
+    audio: "sub",
+    startEpisode: 1000,
+    totalEpisodes: 1100,
+    episodeDurationMinutes: 25,
     logo: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
@@ -168,6 +224,12 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "RETR-06",
     category: "retro",
     categoryLabel: "Classic & Retro",
+    seriesTitle: "City Hunter",
+    anilistId: 1482,
+    audio: "sub",
+    startEpisode: 1,
+    totalEpisodes: 51,
+    episodeDurationMinutes: 25,
     logo: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
@@ -179,8 +241,8 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
       endsAt: "09:55 AM",
     },
     nextUp: {
-      title: "Fist of the North Star",
-      episode: "Episode 34: The Roar of the South Star",
+      title: "City Hunter",
+      episode: "Episode 13: The Mysterious Woman's Secret",
       startsAt: "09:55 AM",
     },
     streamUrl: "https://vidnest.fun/anime/1482/12/sub",
@@ -195,10 +257,16 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "PKMN-07",
     category: "marathon",
     categoryLabel: "24/7 Marathon",
+    seriesTitle: "Pokémon",
+    anilistId: 527,
+    audio: "dub",
+    startEpisode: 1,
+    totalEpisodes: 276,
+    episodeDurationMinutes: 25,
     logo: "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
-      title: "Pokémon: Indigo League",
+      title: "Pokémon",
       episode: "Episode 1: Pokémon - I Choose You!",
       description: "Ash Ketchum of Pallet Town begins his journey alongside an unruly Pikachu.",
       progressPercent: 60,
@@ -206,7 +274,7 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
       endsAt: "10:00 AM",
     },
     nextUp: {
-      title: "Pokémon: Indigo League",
+      title: "Pokémon",
       episode: "Episode 2: Pokémon Emergency!",
       startsAt: "10:00 AM",
     },
@@ -222,19 +290,25 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "AOT-08",
     category: "shonen",
     categoryLabel: "Shonen & Action",
+    seriesTitle: "Attack on Titan",
+    anilistId: 16498,
+    audio: "sub",
+    startEpisode: 1,
+    totalEpisodes: 87,
+    episodeDurationMinutes: 25,
     logo: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
-      title: "Attack on Titan: The Final Season",
-      episode: "Episode 17: Judgment",
-      description: "The War for Paradis reaches its peak as the Armored and Beast Titans clash.",
+      title: "Attack on Titan",
+      episode: "Episode 1: To You, in 2000 Years",
+      description: "The Colossal Titan breaches Wall Maria, shattering humanity's century of peace.",
       progressPercent: 25,
       startsAt: "09:45 AM",
       endsAt: "10:10 AM",
     },
     nextUp: {
-      title: "Attack on Titan: The Final Season",
-      episode: "Episode 18: Sneak Attack",
+      title: "Attack on Titan",
+      episode: "Episode 2: That Day",
       startsAt: "10:10 AM",
     },
     streamUrl: "https://vidnest.fun/anime/16498/1/sub",
@@ -303,6 +377,7 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     callsign: "CINE-11",
     category: "movies",
     categoryLabel: "Feature Films",
+    seriesTitle: "Theatrical Anime Cinema",
     logo: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=150&auto=format&fit=crop&q=80",
     banner: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&auto=format&fit=crop&q=80",
     nowPlaying: {
@@ -325,3 +400,150 @@ export const ANIME_CHANNELS: AnimeLiveChannel[] = [
     badge: "CINEMA",
   },
 ];
+
+export const CHANNEL_MIRRORS = [
+  {
+    id: "vidnest",
+    name: "Vidnest HD (Primary)",
+    getUrl: (id: number, ep: number, audio: string) => `https://vidnest.fun/anime/${id}/${ep}/${audio}`,
+  },
+  {
+    id: "vidsrc",
+    name: "VidSrc (Cinema)",
+    getUrl: (id: number, ep: number) => `https://vidsrc.to/embed/tv/${id}/1/${ep}`,
+  },
+  {
+    id: "multiembed",
+    name: "MultiEmbed (VIP)",
+    getUrl: (id: number, ep: number) => `https://multiembed.mov/?video_id=${id}&tmdb=0&s=1&e=${ep}`,
+  },
+  {
+    id: "2embed",
+    name: "2Embed (Fast)",
+    getUrl: (id: number, ep: number) => `https://www.2embed.cc/embedtv/${id}&s=1&e=${ep}`,
+  },
+];
+
+export function getChannelLiveState(channel: AnimeLiveChannel, now: Date = new Date()) {
+  if (channel.category === "music") {
+    return {
+      currentEpisodeNumber: 1,
+      totalEpisodes: 1,
+      progressPercent: 50,
+      startsAt: "Live",
+      endsAt: "Continuous",
+      nextStartsAt: "Continuous",
+      currentTitle: channel.nowPlaying.title,
+      currentEpisode: "Continuous 24/7 Live Broadcast",
+      currentDesc: channel.nowPlaying.description,
+      nextTitle: channel.nextUp.title,
+      nextEpisode: channel.nextUp.episode,
+      upcoming: [] as ChannelScheduleItem[],
+      anilistId: undefined as number | undefined,
+    };
+  }
+
+  if (channel.id === "anime-cinema-247") {
+    const slotDurationMin = 120;
+    const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+    const movieIdx = Math.floor(minutesSinceMidnight / slotDurationMin) % CINEMA_PLAYLIST.length;
+    const nextMovieIdx = (movieIdx + 1) % CINEMA_PLAYLIST.length;
+    const minuteInSlot = minutesSinceMidnight % slotDurationMin;
+    const progressPercent = Math.min(100, Math.round((minuteInSlot / slotDurationMin) * 100));
+
+    const currentMovie = CINEMA_PLAYLIST[movieIdx];
+    const nextMovie = CINEMA_PLAYLIST[nextMovieIdx];
+
+    const slotStartHour = Math.floor((Math.floor(minutesSinceMidnight / slotDurationMin) * slotDurationMin) / 60);
+    const slotStartMin = (Math.floor(minutesSinceMidnight / slotDurationMin) * slotDurationMin) % 60;
+    const slotEndHour = (slotStartHour + 2) % 24;
+
+    const formatHour = (h: number, m: number) => {
+      const ampm = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return `${h12.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${ampm}`;
+    };
+
+    const upcoming: ChannelScheduleItem[] = [1, 2, 3, 4].map((offset) => {
+      const idx = (movieIdx + offset) % CINEMA_PLAYLIST.length;
+      const m = CINEMA_PLAYLIST[idx];
+      const startH = (slotStartHour + offset * 2) % 24;
+      return {
+        episodeNumber: idx + 1,
+        title: m.title,
+        episode: "Full Feature Film",
+        startsAt: formatHour(startH, slotStartMin),
+        endsAt: formatHour((startH + 2) % 24, slotStartMin),
+      };
+    });
+
+    return {
+      currentEpisodeNumber: movieIdx + 1,
+      totalEpisodes: CINEMA_PLAYLIST.length,
+      progressPercent,
+      startsAt: formatHour(slotStartHour, slotStartMin),
+      endsAt: formatHour(slotEndHour, slotStartMin),
+      nextStartsAt: formatHour(slotEndHour, slotStartMin),
+      currentTitle: currentMovie.title,
+      currentEpisode: "Full Feature Film (1080p)",
+      currentDesc: currentMovie.desc,
+      nextTitle: nextMovie.title,
+      nextEpisode: "Full Feature Film",
+      upcoming,
+      anilistId: currentMovie.anilistId,
+    };
+  }
+
+  // Standard anime episode marathon (25-minute slots):
+  const slotDurationMin = 25;
+  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+  const baseEpOffset = channel.startEpisode || 1;
+  const total = channel.totalEpisodes || 100;
+
+  const currentSlotIndex = Math.floor(minutesSinceMidnight / slotDurationMin);
+  const currentEpNum = ((currentSlotIndex + baseEpOffset - 1) % total) + 1;
+  const nextEpNum = (currentEpNum % total) + 1;
+
+  const minuteInSlot = minutesSinceMidnight % slotDurationMin;
+  const progressPercent = Math.min(100, Math.round((minuteInSlot / slotDurationMin) * 100));
+
+  const slotStartMinutes = currentSlotIndex * slotDurationMin;
+  const slotEndMinutes = slotStartMinutes + slotDurationMin;
+
+  const formatMin = (totalMins: number) => {
+    const norm = ((totalMins % 1440) + 1440) % 1440;
+    const h = Math.floor(norm / 60);
+    const m = norm % 60;
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    return `${h12.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${ampm}`;
+  };
+
+  const upcoming: ChannelScheduleItem[] = [1, 2, 3, 4, 5].map((offset) => {
+    const ep = ((currentEpNum + offset - 1) % total) + 1;
+    const startM = slotStartMinutes + offset * slotDurationMin;
+    return {
+      episodeNumber: ep,
+      title: channel.seriesTitle || channel.name,
+      episode: `Episode ${ep}`,
+      startsAt: formatMin(startM),
+      endsAt: formatMin(startM + slotDurationMin),
+    };
+  });
+
+  return {
+    currentEpisodeNumber: currentEpNum,
+    totalEpisodes: total,
+    progressPercent,
+    startsAt: formatMin(slotStartMinutes),
+    endsAt: formatMin(slotEndMinutes),
+    nextStartsAt: formatMin(slotEndMinutes),
+    currentTitle: channel.seriesTitle || channel.nowPlaying.title,
+    currentEpisode: `Episode ${currentEpNum}`,
+    currentDesc: channel.nowPlaying.description,
+    nextTitle: channel.seriesTitle || channel.nextUp.title,
+    nextEpisode: `Episode ${nextEpNum}`,
+    upcoming,
+    anilistId: channel.anilistId,
+  };
+}
