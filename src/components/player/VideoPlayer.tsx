@@ -20,9 +20,15 @@ import {
   Check,
   Sparkles,
   ShieldCheck,
+  Type,
 } from "lucide-react";
 import { StreamSource, SubtitleTrack } from "@/types/anime";
-import { saveWatchProgress, getPlayerSettings, savePlayerSettings, getWatchHistoryItem } from "@/lib/storage";
+import {
+  saveWatchProgress,
+  getPlayerSettings,
+  savePlayerSettings,
+  getWatchHistoryItem,
+} from "@/lib/storage";
 
 interface SubtitleCue {
   start: number;
@@ -122,6 +128,12 @@ export default function VideoPlayer({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [controlsVisible, setControlsVisible] = useState(true);
 
+  // Subtitle Customization State (Phase 4)
+  const [subtitleSize, setSubtitleSize] = useState<"small" | "medium" | "large">("medium");
+  const [subtitleBg, setSubtitleBg] = useState<"solid" | "translucent" | "none">("solid");
+  const [subtitleColor, setSubtitleColor] = useState<"white" | "yellow">("white");
+  const [showSubtitleSettings, setShowSubtitleSettings] = useState(false);
+
   // Menus
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
@@ -144,11 +156,42 @@ export default function VideoPlayer({
 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Detect whether the current stream is an embedded third-party player
+  const isEmbed = streamSource?.type === "embed";
+
   // Initialize saved player preferences
   useEffect(() => {
     const prefs = getPlayerSettings();
     setVolume(prefs.volume);
     setIsMuted(prefs.muted);
+    if (prefs.subtitleSize) setSubtitleSize(prefs.subtitleSize);
+    if (prefs.subtitleBg) setSubtitleBg(prefs.subtitleBg);
+    if (prefs.subtitleColor) setSubtitleColor(prefs.subtitleColor);
+  }, []);
+
+  // Sync fullscreen state with browser events (Desktop & Mobile, Esc key exits)
+  useEffect(() => {
+    const handleFsChange = () => {
+      const activeFs = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(activeFs);
+    };
+
+    document.addEventListener("fullscreenchange", handleFsChange);
+    document.addEventListener("webkitfullscreenchange", handleFsChange);
+    document.addEventListener("mozfullscreenchange", handleFsChange);
+    document.addEventListener("MSFullscreenChange", handleFsChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      document.removeEventListener("webkitfullscreenchange", handleFsChange);
+      document.removeEventListener("mozfullscreenchange", handleFsChange);
+      document.removeEventListener("MSFullscreenChange", handleFsChange);
+    };
   }, []);
 
   // Ad-Shield & Anti-Popup Interceptor:
@@ -174,17 +217,34 @@ export default function VideoPlayer({
 
     if (hlsRef.current && hlsRef.current.audioTracks && hlsRef.current.audioTracks.length > 1) {
       const tracks = hlsRef.current.audioTracks;
-      const targetTrack = currentAudio === "dub"
-        ? tracks.find((t) => t.lang?.toLowerCase().startsWith("en") || t.name.toLowerCase().includes("eng") || t.name.toLowerCase().includes("dub"))
-        : tracks.find((t) => t.lang?.toLowerCase().startsWith("ja") || t.name.toLowerCase().includes("jap") || t.name.toLowerCase().includes("sub"));
+      const targetTrack =
+        currentAudio === "dub"
+          ? tracks.find(
+              (t) =>
+                t.lang?.toLowerCase().startsWith("en") ||
+                t.name.toLowerCase().includes("eng") ||
+                t.name.toLowerCase().includes("dub")
+            )
+          : tracks.find(
+              (t) =>
+                t.lang?.toLowerCase().startsWith("ja") ||
+                t.name.toLowerCase().includes("jap") ||
+                t.name.toLowerCase().includes("sub")
+            );
       if (targetTrack && hlsRef.current.audioTrack !== targetTrack.id) {
         hlsRef.current.audioTrack = targetTrack.id;
       }
     }
   }, [currentAudio]);
 
-  // Load and parse active subtitle track
+  // Load and parse active subtitle track (Custom Subtitle Engine - No native track duplicates)
   useEffect(() => {
+    if (isEmbed) {
+      setSubtitleCues([]);
+      setActiveCueText(null);
+      return;
+    }
+
     const subs = streamSource?.subtitles;
     if (!subs || subs.length === 0 || !subtitlesEnabled) {
       setSubtitleCues([]);
@@ -215,21 +275,22 @@ export default function VideoPlayer({
     return () => {
       isCancelled = true;
     };
-  }, [streamSource?.subtitles, activeSubtitleIndex, subtitlesEnabled]);
+  }, [streamSource?.subtitles, activeSubtitleIndex, subtitlesEnabled, isEmbed]);
 
   // Sync active on-screen cue text with currentTime
   useEffect(() => {
-    if (!subtitlesEnabled || subtitleCues.length === 0) {
+    if (isEmbed || !subtitlesEnabled || subtitleCues.length === 0) {
       setActiveCueText(null);
       return;
     }
 
     const match = subtitleCues.find((c) => currentTime >= c.start && currentTime <= c.end);
     setActiveCueText(match ? match.text : null);
-  }, [currentTime, subtitlesEnabled, subtitleCues]);
+  }, [currentTime, subtitlesEnabled, subtitleCues, isEmbed]);
 
   // Check saved progress for resume prompt
   useEffect(() => {
+    if (isEmbed) return;
     const historyItem = getWatchHistoryItem(animeId);
     if (historyItem && historyItem.episodeNumber === episodeNumber && historyItem.currentTime > 15) {
       if (historyItem.currentTime < (historyItem.duration || 1200) - 60) {
@@ -237,31 +298,30 @@ export default function VideoPlayer({
         setShowResumePrompt(true);
       }
     }
-  }, [animeId, episodeNumber]);
+  }, [animeId, episodeNumber, isEmbed]);
 
   // Hide controls after inactivity
   const handleMouseMove = () => {
     setControlsVisible(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) {
+      if (isPlaying || isEmbed) {
         setControlsVisible(false);
         setShowSpeedMenu(false);
         setShowSubtitleMenu(false);
         setShowQualityMenu(false);
         setShowAudioMenu(false);
+        setShowSubtitleSettings(false);
       }
     }, 3500);
   };
 
-  // Video and HLS initialization
+  // Video and HLS initialization for Native HLS streams
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
 
     setHasError(false);
     setErrorDetails(null);
-    setIsLoading(true);
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -275,11 +335,14 @@ export default function VideoPlayer({
       return;
     }
 
-    if (streamSource.type === "embed") {
+    if (isEmbed) {
       setIsLoading(false);
       setIsPlaying(true);
       return;
     }
+
+    if (!video) return;
+    setIsLoading(true);
 
     const rawStreamUrl = streamSource.url;
     const streamUrl =
@@ -315,9 +378,20 @@ export default function VideoPlayer({
           // Multi-audio track matching
           if (hls.audioTracks && hls.audioTracks.length > 1) {
             const tracks = hls.audioTracks;
-            const targetTrack = currentAudio === "dub"
-              ? tracks.find((t) => t.lang?.toLowerCase().startsWith("en") || t.name.toLowerCase().includes("eng") || t.name.toLowerCase().includes("dub"))
-              : tracks.find((t) => t.lang?.toLowerCase().startsWith("ja") || t.name.toLowerCase().includes("jap") || t.name.toLowerCase().includes("sub"));
+            const targetTrack =
+              currentAudio === "dub"
+                ? tracks.find(
+                    (t) =>
+                      t.lang?.toLowerCase().startsWith("en") ||
+                      t.name.toLowerCase().includes("eng") ||
+                      t.name.toLowerCase().includes("dub")
+                  )
+                : tracks.find(
+                    (t) =>
+                      t.lang?.toLowerCase().startsWith("ja") ||
+                      t.name.toLowerCase().includes("jap") ||
+                      t.name.toLowerCase().includes("sub")
+                  );
             if (targetTrack) {
               hls.audioTrack = targetTrack.id;
             }
@@ -341,9 +415,20 @@ export default function VideoPlayer({
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_, data) => {
           if (data.audioTracks && data.audioTracks.length > 1) {
             const tracks = data.audioTracks;
-            const targetTrack = currentAudio === "dub"
-              ? tracks.find((t) => t.lang?.toLowerCase().startsWith("en") || t.name.toLowerCase().includes("eng") || t.name.toLowerCase().includes("dub"))
-              : tracks.find((t) => t.lang?.toLowerCase().startsWith("ja") || t.name.toLowerCase().includes("jap") || t.name.toLowerCase().includes("sub"));
+            const targetTrack =
+              currentAudio === "dub"
+                ? tracks.find(
+                    (t) =>
+                      t.lang?.toLowerCase().startsWith("en") ||
+                      t.name.toLowerCase().includes("eng") ||
+                      t.name.toLowerCase().includes("dub")
+                  )
+                : tracks.find(
+                    (t) =>
+                      t.lang?.toLowerCase().startsWith("ja") ||
+                      t.name.toLowerCase().includes("jap") ||
+                      t.name.toLowerCase().includes("sub")
+                  );
             if (targetTrack) {
               hls.audioTrack = targetTrack.id;
             }
@@ -394,11 +479,11 @@ export default function VideoPlayer({
         hlsRef.current = null;
       }
     };
-  }, [streamSource, errorMessage]);
+  }, [streamSource, errorMessage, isEmbed, currentAudio]);
 
-  // Periodic watch progress saver
+  // Periodic watch progress saver for native player
   useEffect(() => {
-    if (!isPlaying || currentTime <= 0) return;
+    if (isEmbed || !isPlaying || currentTime <= 0) return;
     const interval = setInterval(() => {
       saveWatchProgress({
         animeId,
@@ -411,9 +496,10 @@ export default function VideoPlayer({
       });
     }, 5000);
     return () => clearInterval(interval);
-  }, [isPlaying, currentTime, duration, animeId, animeTitle, animeCover, episodeNumber, episodeTitle]);
+  }, [isPlaying, currentTime, duration, animeId, animeTitle, animeCover, episodeNumber, episodeTitle, isEmbed]);
 
   const togglePlay = useCallback(() => {
+    if (isEmbed) return;
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -422,7 +508,7 @@ export default function VideoPlayer({
       video.pause();
       setIsPlaying(false);
     }
-  }, []);
+  }, [isEmbed]);
 
   const handleTimeUpdate = () => {
     const video = videoRef.current;
@@ -468,10 +554,35 @@ export default function VideoPlayer({
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    const isCurrentlyFs = !!(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
+    );
+
+    if (!isCurrentlyFs) {
+      const el = containerRef.current as any;
+      if (el.requestFullscreen) {
+        el.requestFullscreen().catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      } else if (el.mozRequestFullScreen) {
+        el.mozRequestFullScreen();
+      } else if (el.msRequestFullscreen) {
+        el.msRequestFullscreen();
+      }
     } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+      const doc = document as any;
+      if (doc.exitFullscreen) {
+        doc.exitFullscreen().catch(() => {});
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen();
+      } else if (doc.mozCancelFullScreen) {
+        doc.mozCancelFullScreen();
+      } else if (doc.msExitFullscreen) {
+        doc.msExitFullscreen();
+      }
     }
   };
 
@@ -551,28 +662,38 @@ export default function VideoPlayer({
       switch (e.code) {
         case "Space":
         case "KeyK":
-          e.preventDefault();
-          togglePlay();
+          if (!isEmbed) {
+            e.preventDefault();
+            togglePlay();
+          }
           break;
         case "ArrowRight":
-          e.preventDefault();
-          handleSeekOffset(10);
+          if (!isEmbed) {
+            e.preventDefault();
+            handleSeekOffset(10);
+          }
           break;
         case "ArrowLeft":
-          e.preventDefault();
-          handleSeekOffset(-10);
+          if (!isEmbed) {
+            e.preventDefault();
+            handleSeekOffset(-10);
+          }
           break;
         case "KeyM":
-          e.preventDefault();
-          toggleMute();
+          if (!isEmbed) {
+            e.preventDefault();
+            toggleMute();
+          }
           break;
         case "KeyF":
           e.preventDefault();
           toggleFullscreen();
           break;
         case "KeyC":
-          e.preventDefault();
-          toggleSubtitles();
+          if (!isEmbed) {
+            e.preventDefault();
+            toggleSubtitles();
+          }
           break;
         case "KeyN":
           if (hasNextEpisode && onNextEpisode) {
@@ -585,7 +706,7 @@ export default function VideoPlayer({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [togglePlay, hasNextEpisode, onNextEpisode]);
+  }, [togglePlay, hasNextEpisode, onNextEpisode, isEmbed]);
 
   const formatTime = (secs: number) => {
     if (isNaN(secs) || secs < 0) return "00:00";
@@ -595,7 +716,23 @@ export default function VideoPlayer({
   };
 
   const subtitlesList = streamSource?.subtitles || [];
-  const activeSubTrack = subtitlesList[activeSubtitleIndex] || subtitlesList[0];
+
+  // Subtitle styling dynamic classes based on user settings
+  const subtitleSizeClass =
+    subtitleSize === "small"
+      ? "text-xs sm:text-sm"
+      : subtitleSize === "large"
+      ? "text-base sm:text-xl md:text-2xl"
+      : "text-xs sm:text-base md:text-lg";
+
+  const subtitleBgClass =
+    subtitleBg === "none"
+      ? "bg-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,1)] border-none"
+      : subtitleBg === "translucent"
+      ? "bg-black/55 backdrop-blur-[2px] border border-white/10"
+      : "bg-black/90 backdrop-blur-[3px] border border-white/15";
+
+  const subtitleColorClass = subtitleColor === "yellow" ? "text-yellow-300" : "text-white";
 
   return (
     <div
@@ -603,29 +740,55 @@ export default function VideoPlayer({
       onMouseMove={handleMouseMove}
       className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-yugito-border select-none group"
     >
-      {/* Stream Type: Embed Iframe vs Native HLS Video */}
-      {streamSource?.type === "embed" ? (
+      {/* 
+        STREAM ENGINE: Embed Provider vs Native HLS Video
+        When isEmbed: The provider handles its own playback controls, progress bar, duration,
+        and subtitles. We intentionally suppress outer controls so there is NO duplicate timeline,
+        NO duplicate playback duration, and NO overlapping controls.
+      */}
+      {isEmbed ? (
         <div className="relative w-full h-full bg-black">
           <iframe
+            key={streamSource.url}
             src={streamSource.url}
             className="w-full h-full border-0 rounded-2xl"
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated"
             allowFullScreen
             referrerPolicy="origin"
             title={`${animeTitle} Episode ${episodeNumber}`}
           />
-          {/* Ad-Shield & Server Watermark */}
-          <div className="absolute top-4 left-4 z-10 pointer-events-none flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 text-white text-[11px] font-bold uppercase tracking-wider">
-              {streamSource.server || "Streambert Mirror"}
-            </span>
-            <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              <span>Ad-Shield Active</span>
-            </span>
+
+          {/* Minimalist Header Pill for Embeds — Auto-fades during playback */}
+          <div
+            className={`absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none transition-opacity duration-300 ${
+              controlsVisible ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-xl bg-black/85 backdrop-blur-md border border-white/10 text-white text-[11px] font-bold uppercase tracking-wider shadow-lg">
+                {streamSource.server || "Streambert Mirror"}
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <span>Ad-Shield Active</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="p-2 rounded-xl bg-black/80 hover:bg-black/95 text-white/90 hover:text-white border border-white/15 backdrop-blur-md transition-all shadow-lg active:scale-95"
+                title={isFullscreen ? "Exit Fullscreen (F)" : "Enter Fullscreen (F)"}
+                aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
       ) : (
+        /* Native HLS / MP4 Video Surface */
         <video
           ref={videoRef}
           onClick={togglePlay}
@@ -642,31 +805,26 @@ export default function VideoPlayer({
           }}
           playsInline
           className="w-full h-full object-contain cursor-pointer"
-        >
-          {subtitlesEnabled && activeSubTrack && (
-            <track
-              key={activeSubTrack.url}
-              kind="subtitles"
-              src={activeSubTrack.url}
-              srcLang={activeSubTrack.srclang || "en"}
-              label={activeSubTrack.label || "English"}
-              default
-            />
-          )}
-        </video>
+        />
       )}
 
-      {/* Cinematic On-Screen Subtitle Rendering */}
-      {subtitlesEnabled && activeCueText && (
+      {/* 
+        CINEMATIC SUBTITLE RENDERING (Native Mode Only)
+        Custom React cues render without native browser track duplicates, guaranteeing
+        single subtitle track display and customizable appearance.
+      */}
+      {!isEmbed && subtitlesEnabled && activeCueText && (
         <div className="absolute bottom-14 sm:bottom-18 md:bottom-20 left-4 right-4 flex justify-center pointer-events-none z-30 transition-all">
-          <span className="bg-black/85 backdrop-blur-[2px] px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white font-extrabold text-xs sm:text-base md:text-lg text-center leading-snug drop-shadow-lg border border-white/10 max-w-2xl whitespace-pre-line animate-fadeIn">
+          <span
+            className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl font-extrabold text-center leading-snug drop-shadow-lg max-w-2xl whitespace-pre-line animate-fadeIn ${subtitleSizeClass} ${subtitleBgClass} ${subtitleColorClass}`}
+          >
             {activeCueText}
           </span>
         </div>
       )}
 
-      {/* Buffering Spinner */}
-      {isLoading && !hasError && (
+      {/* Buffering Spinner (Native Mode) */}
+      {!isEmbed && isLoading && !hasError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px] pointer-events-none z-20">
           <div className="w-12 h-12 rounded-full border-4 border-yugito-accent border-t-transparent animate-spin mb-3" />
           <p className="text-xs font-semibold text-yugito-text">Buffering stream...</p>
@@ -706,8 +864,8 @@ export default function VideoPlayer({
         </div>
       )}
 
-      {/* Resume Playback Prompt */}
-      {showResumePrompt && !hasError && (
+      {/* Resume Playback Prompt (Native Mode) */}
+      {!isEmbed && showResumePrompt && !hasError && (
         <div className="absolute top-4 left-4 z-30 bg-yugito-card/95 border border-yugito-accent/50 rounded-xl p-3 shadow-yugito backdrop-blur-md animate-fadeIn flex items-center gap-3">
           <div>
             <div className="text-xs font-bold text-white">Resume from last time?</div>
@@ -730,8 +888,8 @@ export default function VideoPlayer({
         </div>
       )}
 
-      {/* AniSkip Opening Button */}
-      {isPlaying && aniSkipIntro && currentTime >= aniSkipIntro.startTime && currentTime < aniSkipIntro.endTime && (
+      {/* AniSkip Opening Button (Native Mode) */}
+      {!isEmbed && isPlaying && aniSkipIntro && currentTime >= aniSkipIntro.startTime && currentTime < aniSkipIntro.endTime && (
         <button
           type="button"
           onClick={handleSkipIntro}
@@ -742,8 +900,8 @@ export default function VideoPlayer({
         </button>
       )}
 
-      {/* AniSkip Ending Button */}
-      {isPlaying && aniSkipOutro && currentTime >= aniSkipOutro.startTime && currentTime < aniSkipOutro.endTime && (
+      {/* AniSkip Ending Button (Native Mode) */}
+      {!isEmbed && isPlaying && aniSkipOutro && currentTime >= aniSkipOutro.startTime && currentTime < aniSkipOutro.endTime && (
         <button
           type="button"
           onClick={handleSkipOutro}
@@ -754,8 +912,8 @@ export default function VideoPlayer({
         </button>
       )}
 
-      {/* Fallback Intro Button when AniSkip is not available */}
-      {isPlaying && !aniSkipIntro && currentTime > 5 && currentTime < 100 && (
+      {/* Fallback Intro Button when AniSkip is not available (Native Mode) */}
+      {!isEmbed && isPlaying && !aniSkipIntro && currentTime > 5 && currentTime < 100 && (
         <button
           type="button"
           onClick={handleSkipIntro}
@@ -766,363 +924,470 @@ export default function VideoPlayer({
         </button>
       )}
 
-      {/* Custom Video Controls Overlay */}
-      <div
-        className={`absolute inset-0 flex flex-col justify-between p-4 z-20 bg-gradient-to-t from-black/85 via-transparent to-black/60 transition-opacity duration-300 ${
-          controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-      >
-        {/* Top Info Bar: Audio, Server & Title */}
-        <div className="flex items-center justify-between text-xs text-white drop-shadow">
-          <div className="truncate max-w-md flex items-center gap-2">
-            <span className="font-bold text-yugito-accentLight">Ep {episodeNumber}</span>
-            <span className="text-white/40">•</span>
-            <span className="font-semibold truncate">{animeTitle}</span>
-          </div>
+      {/* 
+        NATIVE CONTROLS OVERLAY:
+        Rendered EXCLUSIVELY for native HLS/MP4 streams.
+        For embeds, this is completely excluded to eliminate duplicate timelines,
+        duplicate durations, and overlapping controls.
+      */}
+      {!isEmbed && (
+        <div
+          className={`absolute inset-0 flex flex-col justify-between p-4 z-20 bg-gradient-to-t from-black/85 via-transparent to-black/60 transition-opacity duration-300 ${
+            controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          {/* Top Info Bar: Title & Indicators */}
+          <div className="flex items-center justify-between text-xs text-white drop-shadow">
+            <div className="truncate max-w-md flex items-center gap-2">
+              <span className="font-bold text-yugito-accentLight">Ep {episodeNumber}</span>
+              <span className="text-white/40">•</span>
+              <span className="font-semibold truncate">{animeTitle}</span>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {/* Streambert Engine Badge */}
-            {streamSource?.server?.toLowerCase().includes("streambert") && (
-              <span className="px-2 py-0.5 rounded bg-violet-600/30 border border-violet-500/50 text-[10px] font-bold text-violet-300 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-violet-400" />
-                <span>STREAMBERT</span>
+            <div className="flex items-center gap-2">
+              {/* Streambert Engine Badge */}
+              {streamSource?.server?.toLowerCase().includes("streambert") && (
+                <span className="px-2 py-0.5 rounded bg-violet-600/30 border border-violet-500/50 text-[10px] font-bold text-violet-300 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-violet-400" />
+                  <span>STREAMBERT</span>
+                </span>
+              )}
+
+              {/* Audio Indicator */}
+              <span className="px-2 py-0.5 rounded bg-yugito-accent/30 border border-yugito-accent/50 text-[10px] font-bold text-yugito-accentLight flex items-center gap-1">
+                <Headphones className="w-3 h-3" />
+                <span>{currentAudio === "dub" ? "ENGLISH DUB" : "JAPANESE (SUB)"}</span>
               </span>
-            )}
 
-            {/* Audio Indicator */}
-            <span className="px-2 py-0.5 rounded bg-yugito-accent/30 border border-yugito-accent/50 text-[10px] font-bold text-yugito-accentLight flex items-center gap-1">
-              <Headphones className="w-3 h-3" />
-              <span>{currentAudio === "dub" ? "ENGLISH DUB" : "JAPANESE (SUB)"}</span>
-            </span>
-
-            {/* Subtitle Indicator */}
-            <span
-              className={`px-2 py-0.5 rounded border text-[10px] font-bold transition-colors ${
-                subtitlesEnabled
-                  ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
-                  : "bg-white/10 border-white/20 text-yugito-muted"
-              }`}
-            >
-              CC: {subtitlesEnabled ? "ON" : "OFF"}
-            </span>
-          </div>
-        </div>
-
-        {/* Center Big Play Button if paused */}
-        {!isPlaying && !isLoading && !hasError && (
-          <div className="flex items-center justify-center">
-            <button
-              type="button"
-              onClick={togglePlay}
-              className="w-16 h-16 rounded-full bg-yugito-accent/90 hover:bg-yugito-accent text-white flex items-center justify-center shadow-yugitoGlow transform hover:scale-110 transition-all"
-              aria-label="Play"
-            >
-              <Play className="w-7 h-7 fill-white ml-1" />
-            </button>
-          </div>
-        )}
-        <div />
-
-        {/* Bottom Control Bar */}
-        <div className="space-y-2">
-          {/* Progress Slider */}
-          <div className="relative group/scrubber flex items-center">
-            <input
-              type="range"
-              min={0}
-              max={duration || 100}
-              step={0.5}
-              value={currentTime}
-              onChange={handleSeek}
-              className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-yugito-accent group-hover/scrubber:h-2.5 transition-all"
-            />
+              {/* Subtitle Indicator */}
+              <span
+                className={`px-2 py-0.5 rounded border text-[10px] font-bold transition-colors ${
+                  subtitlesEnabled
+                    ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
+                    : "bg-white/10 border-white/20 text-yugito-muted"
+                }`}
+              >
+                CC: {subtitlesEnabled ? "ON" : "OFF"}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-white pt-1">
-            {/* Left Controls: Play, Prev, Next, Volume, Time */}
-            <div className="flex items-center gap-3">
+          {/* Center Play Button if paused */}
+          {!isPlaying && !isLoading && !hasError && (
+            <div className="flex items-center justify-center">
               <button
                 type="button"
                 onClick={togglePlay}
-                className="p-1 hover:text-yugito-accentLight transition-colors"
-                aria-label={isPlaying ? "Pause" : "Play"}
+                className="w-16 h-16 rounded-full bg-yugito-accent/90 hover:bg-yugito-accent text-white flex items-center justify-center shadow-yugitoGlow transform hover:scale-110 transition-all"
+                aria-label="Play"
               >
-                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-white" />}
+                <Play className="w-7 h-7 fill-white ml-1" />
               </button>
+            </div>
+          )}
+          <div />
 
-              {hasPrevEpisode && onPrevEpisode && (
-                <button
-                  type="button"
-                  onClick={onPrevEpisode}
-                  className="p-1 hover:text-yugito-accentLight transition-colors"
-                  title="Previous Episode"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-              )}
-
-              {hasNextEpisode && onNextEpisode && (
-                <button
-                  type="button"
-                  onClick={onNextEpisode}
-                  className="p-1 hover:text-yugito-accentLight transition-colors"
-                  title="Next Episode"
-                >
-                  <SkipForward className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* Volume Slider */}
-              <div className="flex items-center gap-1.5 group/vol">
-                <button
-                  type="button"
-                  onClick={toggleMute}
-                  className="p-1 hover:text-yugito-accentLight transition-colors"
-                  aria-label={isMuted ? "Unmute" : "Mute"}
-                >
-                  {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={isMuted ? 0 : volume}
-                  onChange={handleVolumeChange}
-                  className="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-yugito-accent opacity-70 group-hover/vol:opacity-100 transition-opacity"
-                />
-              </div>
-
-              {/* Timestamp */}
-              <div className="text-[11px] text-yugito-muted font-medium ml-1">
-                <span>{formatTime(currentTime)}</span>
-                <span className="mx-1">/</span>
-                <span>{formatTime(duration)}</span>
-              </div>
+          {/* Single Unified Bottom Control Bar */}
+          <div className="space-y-2">
+            {/* Playback Timeline Slider */}
+            <div className="relative group/scrubber flex items-center">
+              <input
+                type="range"
+                min={0}
+                max={duration || 100}
+                step={0.5}
+                value={currentTime}
+                onChange={handleSeek}
+                className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-yugito-accent group-hover/scrubber:h-2.5 transition-all"
+              />
             </div>
 
-            {/* Right Controls: Audio, Subtitles (CC), Speed, Quality, Fullscreen */}
-            <div className="flex items-center gap-2.5">
-              {/* Audio Selector (Japanese vs English Dub) */}
-              <div className="relative">
+            <div className="flex items-center justify-between text-xs text-white pt-1">
+              {/* Left Controls: Play, Prev, Next, Volume, Single Duration Indicator */}
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowAudioMenu(!showAudioMenu)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-yugito-card/90 border border-white/10 hover:border-yugito-accent text-[11px] font-bold text-white transition-all"
-                  title="Switch Audio: Japanese (Sub) or English Dub"
+                  onClick={togglePlay}
+                  className="p-1 hover:text-yugito-accentLight transition-colors"
+                  aria-label={isPlaying ? "Pause" : "Play"}
                 >
-                  <Headphones className="w-3.5 h-3.5 text-yugito-accent" />
-                  <span>{currentAudio === "dub" ? "Dub" : "Japanese"}</span>
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-white" />}
                 </button>
-                {showAudioMenu && (
-                  <div className="absolute bottom-9 right-0 bg-yugito-card border border-yugito-border rounded-xl shadow-yugito py-1.5 w-48 z-40 text-xs">
-                    <div className="px-3 py-1 text-[10px] uppercase font-bold text-yugito-subtle tracking-wider">
-                      Audio Track
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleAudioSelect("sub")}
-                      className={`w-full text-left px-3 py-2 hover:bg-yugito-surface flex items-center justify-between ${
-                        currentAudio === "sub" ? "text-yugito-accent font-bold" : "text-yugito-text"
-                      }`}
-                    >
-                      <div className="flex flex-col">
-                        <span>Japanese (Original)</span>
-                        <span className="text-[10px] text-yugito-muted font-normal">Subtitles Recommended</span>
-                      </div>
-                      {currentAudio === "sub" && <Check className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAudioSelect("dub")}
-                      className={`w-full text-left px-3 py-2 hover:bg-yugito-surface flex items-center justify-between ${
-                        currentAudio === "dub" ? "text-yugito-accent font-bold" : "text-yugito-text"
-                      }`}
-                    >
-                      <div className="flex flex-col">
-                        <span>English Dub</span>
-                        <span className="text-[10px] text-yugito-muted font-normal">English Voiceover</span>
-                      </div>
-                      {currentAudio === "dub" && <Check className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
+
+                {hasPrevEpisode && onPrevEpisode && (
+                  <button
+                    type="button"
+                    onClick={onPrevEpisode}
+                    className="p-1 hover:text-yugito-accentLight transition-colors"
+                    title="Previous Episode"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
                 )}
+
+                {hasNextEpisode && onNextEpisode && (
+                  <button
+                    type="button"
+                    onClick={onNextEpisode}
+                    className="p-1 hover:text-yugito-accentLight transition-colors"
+                    title="Next Episode (N)"
+                  >
+                    <SkipForward className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Volume Slider */}
+                <div className="flex items-center gap-1.5 group/vol">
+                  <button
+                    type="button"
+                    onClick={toggleMute}
+                    className="p-1 hover:text-yugito-accentLight transition-colors"
+                    aria-label={isMuted ? "Unmute" : "Mute (M)"}
+                  >
+                    {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={isMuted ? 0 : volume}
+                    onChange={handleVolumeChange}
+                    className="w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-yugito-accent opacity-70 group-hover/vol:opacity-100 transition-opacity"
+                  />
+                </div>
+
+                {/* Single Timestamp */}
+                <div className="text-[11px] text-yugito-muted font-medium ml-1">
+                  <span>{formatTime(currentTime)}</span>
+                  <span className="mx-1">/</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
               </div>
 
-              {/* Subtitles CC Toggle & Menu */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={toggleSubtitles}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setShowSubtitleMenu(!showSubtitleMenu);
-                  }}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold transition-all ${
-                    subtitlesEnabled
-                      ? "bg-yugito-accent text-white border-yugito-accent shadow-sm"
-                      : "bg-yugito-card/90 text-yugito-muted hover:text-white border-white/10"
-                  }`}
-                  title="Click to toggle Subtitles ON/OFF (Right click or hover for tracks)"
-                >
-                  <Subtitles className="w-3.5 h-3.5" />
-                  <span>CC</span>
-                </button>
-
-                {/* Subtitle track selector popup button */}
-                <button
-                  type="button"
-                  onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
-                  className="px-1 text-yugito-muted hover:text-white text-[10px]"
-                  title="Subtitle language options"
-                >
-                  ▾
-                </button>
-
-                {showSubtitleMenu && (
-                  <div className="absolute bottom-9 right-0 bg-yugito-card border border-yugito-border rounded-xl shadow-yugito py-1.5 w-52 max-h-60 overflow-y-auto z-40 text-xs">
-                    <div className="px-3 py-1 text-[10px] uppercase font-bold text-yugito-subtle tracking-wider flex items-center justify-between">
-                      <span>Subtitles</span>
-                      <span className="text-yugito-accentLight font-normal">Key: C</span>
-                    </div>
-
-                    {/* Turn Off Option */}
-                    <button
-                      type="button"
-                      onClick={() => handleSubtitleTrackSelect(-1)}
-                      className={`w-full text-left px-3 py-2 hover:bg-yugito-surface flex items-center justify-between ${
-                        !subtitlesEnabled ? "text-yugito-accent font-bold bg-yugito-surface/50" : "text-yugito-text"
-                      }`}
-                    >
-                      <span>Off (No Subtitles)</span>
-                      {!subtitlesEnabled && <Check className="w-3.5 h-3.5" />}
-                    </button>
-
-                    <div className="h-px bg-yugito-border my-1" />
-
-                    {/* Subtitle Tracks */}
-                    {subtitlesList.length > 0 ? (
-                      subtitlesList.map((sub, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => handleSubtitleTrackSelect(i)}
-                          className={`w-full text-left px-3 py-2 hover:bg-yugito-surface flex items-center justify-between truncate ${
-                            subtitlesEnabled && activeSubtitleIndex === i
-                              ? "text-yugito-accent font-bold bg-yugito-surface/50"
-                              : "text-yugito-text"
-                          }`}
-                        >
-                          <span className="truncate">{sub.label || `English Track ${i + 1}`}</span>
-                          {subtitlesEnabled && activeSubtitleIndex === i && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-3 py-2 text-[11px] text-yugito-subtle">
-                        English subtitles automatically active
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Speed Menu */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                  className="px-2 py-0.5 rounded text-[11px] font-bold hover:bg-white/10 transition-colors"
-                >
-                  {playbackSpeed}x
-                </button>
-                {showSpeedMenu && (
-                  <div className="absolute bottom-8 right-0 bg-yugito-card border border-yugito-border rounded-xl shadow-yugito py-1 w-24 z-30 text-xs">
-                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => handleSpeedSelect(s)}
-                        className={`w-full text-left px-3 py-1.5 hover:bg-yugito-surface ${
-                          playbackSpeed === s ? "text-yugito-accent font-bold" : "text-yugito-muted"
-                        }`}
-                      >
-                        {s}x
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Quality Menu (1080p, 720p, etc.) */}
-              {availableQualities.length > 0 && (
+              {/* Right Controls: Audio, Subtitles, Speed, Quality, Fullscreen */}
+              <div className="flex items-center gap-2.5">
+                {/* Audio Selector */}
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowQualityMenu(!showQualityMenu)}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-yugito-card/90 border border-white/10 hover:border-yugito-accent text-[11px] font-bold text-white transition-all"
-                    title="Stream Quality"
+                    onClick={() => setShowAudioMenu(!showAudioMenu)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-yugito-card/90 border border-white/10 hover:border-yugito-accent text-[11px] font-bold text-white transition-all"
+                    title="Switch Audio"
                   >
-                    <Settings className="w-3.5 h-3.5 text-yugito-accent" />
-                    <span>
-                      {currentQualityLevel === -1
-                        ? (activeLevelHeight ? `${activeLevelHeight}p` : "Auto")
-                        : `${availableQualities.find((q) => q.level === currentQualityLevel)?.height || "HD"}p`}
-                    </span>
+                    <Headphones className="w-3.5 h-3.5 text-yugito-accent" />
+                    <span>{currentAudio === "dub" ? "Dub" : "Japanese"}</span>
                   </button>
-                  {showQualityMenu && (
-                    <div className="absolute bottom-9 right-0 bg-yugito-card border border-yugito-border rounded-xl shadow-yugito py-1.5 w-36 z-40 text-xs">
+                  {showAudioMenu && (
+                    <div className="absolute bottom-9 right-0 bg-yugito-card border border-yugito-border rounded-xl shadow-yugito py-1.5 w-48 z-40 text-xs">
                       <div className="px-3 py-1 text-[10px] uppercase font-bold text-yugito-subtle tracking-wider">
-                        Resolution
+                        Audio Track
                       </div>
                       <button
                         type="button"
-                        onClick={() => handleQualitySelect(-1)}
-                        className={`w-full text-left px-3 py-1.5 hover:bg-yugito-surface flex items-center justify-between ${
-                          currentQualityLevel === -1 ? "text-yugito-accent font-bold bg-yugito-surface/50" : "text-yugito-text"
+                        onClick={() => handleAudioSelect("sub")}
+                        className={`w-full text-left px-3 py-2 hover:bg-yugito-surface flex items-center justify-between ${
+                          currentAudio === "sub" ? "text-yugito-accent font-bold" : "text-yugito-text"
                         }`}
                       >
                         <div className="flex flex-col">
-                          <span>Auto</span>
-                          {activeLevelHeight && (
-                            <span className="text-[9px] text-yugito-muted">Playing {activeLevelHeight}p</span>
-                          )}
+                          <span>Japanese (Original)</span>
+                          <span className="text-[10px] text-yugito-muted font-normal">Subtitles Recommended</span>
                         </div>
-                        {currentQualityLevel === -1 && <Check className="w-3.5 h-3.5" />}
+                        {currentAudio === "sub" && <Check className="w-3.5 h-3.5" />}
                       </button>
-                      <div className="h-px bg-yugito-border my-1" />
-                      {availableQualities.map((q) => (
+                      <button
+                        type="button"
+                        onClick={() => handleAudioSelect("dub")}
+                        className={`w-full text-left px-3 py-2 hover:bg-yugito-surface flex items-center justify-between ${
+                          currentAudio === "dub" ? "text-yugito-accent font-bold" : "text-yugito-text"
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span>English Dub</span>
+                          <span className="text-[10px] text-yugito-muted font-normal">English Voiceover</span>
+                        </div>
+                        {currentAudio === "dub" && <Check className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Subtitles (CC) Menu with Language & Appearance Options */}
+                <div className="relative">
+                  <div className="inline-flex rounded-lg border border-white/10 bg-yugito-card/90 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={toggleSubtitles}
+                      className={`flex items-center gap-1 px-2 py-1 text-xs font-bold transition-all ${
+                        subtitlesEnabled
+                          ? "bg-yugito-accent text-white"
+                          : "text-yugito-muted hover:text-white"
+                      }`}
+                      title="Toggle Subtitles (C)"
+                    >
+                      <Subtitles className="w-3.5 h-3.5" />
+                      <span>CC</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
+                      className="px-1.5 text-yugito-muted hover:text-white text-[10px] bg-white/5 hover:bg-white/10"
+                      title="Subtitle Options"
+                    >
+                      ▾
+                    </button>
+                  </div>
+
+                  {showSubtitleMenu && (
+                    <div className="absolute bottom-9 right-0 bg-yugito-card border border-yugito-border rounded-xl shadow-yugito py-2 w-64 max-h-80 overflow-y-auto z-40 text-xs space-y-2">
+                      <div className="px-3 py-1 text-[10px] uppercase font-bold text-yugito-subtle tracking-wider flex items-center justify-between">
+                        <span>Subtitles</span>
                         <button
-                          key={q.level}
                           type="button"
-                          onClick={() => handleQualitySelect(q.level)}
-                          className={`w-full text-left px-3 py-1.5 hover:bg-yugito-surface flex items-center justify-between ${
-                            currentQualityLevel === q.level ? "text-yugito-accent font-bold bg-yugito-surface/50" : "text-yugito-text"
+                          onClick={() => setShowSubtitleSettings(!showSubtitleSettings)}
+                          className="text-[10px] text-sky-400 hover:text-sky-300 font-bold flex items-center gap-1"
+                        >
+                          <Settings className="w-3 h-3" />
+                          <span>{showSubtitleSettings ? "Tracks" : "Style"}</span>
+                        </button>
+                      </div>
+
+                      {showSubtitleSettings ? (
+                        /* Subtitle Styling / Appearance Customizer */
+                        <div className="px-3 py-1 space-y-3">
+                          {/* Font Size */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-yugito-muted">Font Size</label>
+                            <div className="grid grid-cols-3 gap-1">
+                              {(["small", "medium", "large"] as const).map((sz) => (
+                                <button
+                                  key={sz}
+                                  type="button"
+                                  onClick={() => {
+                                    setSubtitleSize(sz);
+                                    savePlayerSettings({ subtitleSize: sz });
+                                  }}
+                                  className={`py-1 rounded text-[11px] font-semibold capitalize border ${
+                                    subtitleSize === sz
+                                      ? "bg-sky-500 text-white border-sky-400 font-bold"
+                                      : "bg-yugito-surface border-yugito-border text-yugito-muted hover:text-white"
+                                  }`}
+                                >
+                                  {sz}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Background Opacity */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-yugito-muted">Background</label>
+                            <div className="grid grid-cols-3 gap-1">
+                              {(["solid", "translucent", "none"] as const).map((bg) => (
+                                <button
+                                  key={bg}
+                                  type="button"
+                                  onClick={() => {
+                                    setSubtitleBg(bg);
+                                    savePlayerSettings({ subtitleBg: bg });
+                                  }}
+                                  className={`py-1 rounded text-[11px] font-semibold capitalize border ${
+                                    subtitleBg === bg
+                                      ? "bg-sky-500 text-white border-sky-400 font-bold"
+                                      : "bg-yugito-surface border-yugito-border text-yugito-muted hover:text-white"
+                                  }`}
+                                >
+                                  {bg}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Subtitle Color */}
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-yugito-muted">Text Color</label>
+                            <div className="grid grid-cols-2 gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSubtitleColor("white");
+                                  savePlayerSettings({ subtitleColor: "white" });
+                                }}
+                                className={`py-1 rounded text-[11px] font-semibold border ${
+                                  subtitleColor === "white"
+                                    ? "bg-sky-500 text-white border-sky-400 font-bold"
+                                    : "bg-yugito-surface border-yugito-border text-yugito-muted hover:text-white"
+                                }`}
+                              >
+                                Crisp White
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSubtitleColor("yellow");
+                                  savePlayerSettings({ subtitleColor: "yellow" });
+                                }}
+                                className={`py-1 rounded text-[11px] font-semibold border ${
+                                  subtitleColor === "yellow"
+                                    ? "bg-yellow-400 text-black border-yellow-300 font-bold"
+                                    : "bg-yugito-surface border-yugito-border text-yugito-muted hover:text-white"
+                                }`}
+                              >
+                                Cinema Yellow
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Subtitle Track Selection */
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleSubtitleTrackSelect(-1)}
+                            className={`w-full text-left px-3 py-1.5 hover:bg-yugito-surface flex items-center justify-between ${
+                              !subtitlesEnabled ? "text-yugito-accent font-bold bg-yugito-surface/50" : "text-yugito-text"
+                            }`}
+                          >
+                            <span>Off (No Subtitles)</span>
+                            {!subtitlesEnabled && <Check className="w-3.5 h-3.5" />}
+                          </button>
+
+                          <div className="h-px bg-yugito-border my-1" />
+
+                          {subtitlesList.length > 0 ? (
+                            subtitlesList.map((sub, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => handleSubtitleTrackSelect(i)}
+                                className={`w-full text-left px-3 py-1.5 hover:bg-yugito-surface flex items-center justify-between truncate ${
+                                  subtitlesEnabled && activeSubtitleIndex === i
+                                    ? "text-yugito-accent font-bold bg-yugito-surface/50"
+                                    : "text-yugito-text"
+                                }`}
+                              >
+                                <span className="truncate">{sub.label || `Track ${i + 1}`}</span>
+                                {subtitlesEnabled && activeSubtitleIndex === i && (
+                                  <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                                )}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-[11px] text-yugito-subtle">
+                              English subtitles automatically active
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Speed Menu */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                    className="px-2 py-0.5 rounded text-[11px] font-bold hover:bg-white/10 transition-colors"
+                  >
+                    {playbackSpeed}x
+                  </button>
+                  {showSpeedMenu && (
+                    <div className="absolute bottom-8 right-0 bg-yugito-card border border-yugito-border rounded-xl shadow-yugito py-1 w-24 z-30 text-xs">
+                      {[0.5, 0.75, 1, 1.25, 1.5, 2].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => handleSpeedSelect(s)}
+                          className={`w-full text-left px-3 py-1.5 hover:bg-yugito-surface ${
+                            playbackSpeed === s ? "text-yugito-accent font-bold" : "text-yugito-muted"
                           }`}
                         >
-                          <span className="font-semibold">
-                            {q.height}p {q.height >= 1080 ? "FHD" : q.height >= 720 ? "HD" : ""}
-                          </span>
-                          {currentQualityLevel === q.level && <Check className="w-3.5 h-3.5" />}
+                          {s}x
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Fullscreen */}
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                className="p-1 hover:text-yugito-accentLight transition-colors"
-                aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-              >
-                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-              </button>
+                {/* Quality Menu */}
+                {availableQualities.length > 0 && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowQualityMenu(!showQualityMenu)}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-yugito-card/90 border border-white/10 hover:border-yugito-accent text-[11px] font-bold text-white transition-all"
+                      title="Stream Quality"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-yugito-accent" />
+                      <span>
+                        {currentQualityLevel === -1
+                          ? activeLevelHeight
+                            ? `${activeLevelHeight}p`
+                            : "Auto"
+                          : `${availableQualities.find((q) => q.level === currentQualityLevel)?.height || "HD"}p`}
+                      </span>
+                    </button>
+                    {showQualityMenu && (
+                      <div className="absolute bottom-9 right-0 bg-yugito-card border border-yugito-border rounded-xl shadow-yugito py-1.5 w-36 z-40 text-xs">
+                        <div className="px-3 py-1 text-[10px] uppercase font-bold text-yugito-subtle tracking-wider">
+                          Resolution
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleQualitySelect(-1)}
+                          className={`w-full text-left px-3 py-1.5 hover:bg-yugito-surface flex items-center justify-between ${
+                            currentQualityLevel === -1
+                              ? "text-yugito-accent font-bold bg-yugito-surface/50"
+                              : "text-yugito-text"
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span>Auto</span>
+                            {activeLevelHeight && (
+                              <span className="text-[9px] text-yugito-muted">Playing {activeLevelHeight}p</span>
+                            )}
+                          </div>
+                          {currentQualityLevel === -1 && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                        <div className="h-px bg-yugito-border my-1" />
+                        {availableQualities.map((q) => (
+                          <button
+                            key={q.level}
+                            type="button"
+                            onClick={() => handleQualitySelect(q.level)}
+                            className={`w-full text-left px-3 py-1.5 hover:bg-yugito-surface flex items-center justify-between ${
+                              currentQualityLevel === q.level
+                                ? "text-yugito-accent font-bold bg-yugito-surface/50"
+                                : "text-yugito-text"
+                            }`}
+                          >
+                            <span className="font-semibold">
+                              {q.height}p {q.height >= 1080 ? "FHD" : q.height >= 720 ? "HD" : ""}
+                            </span>
+                            {currentQualityLevel === q.level && <Check className="w-3.5 h-3.5" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Single Fullscreen Toggle Button */}
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="p-1 hover:text-yugito-accentLight transition-colors"
+                  aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen (F)"}
+                >
+                  {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

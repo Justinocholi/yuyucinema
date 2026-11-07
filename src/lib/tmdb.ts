@@ -26,14 +26,62 @@ export interface TMDBMedia {
   }>;
 }
 
+export interface TMDBPaginatedResult {
+  results: TMDBMedia[];
+  page: number;
+  totalPages: number;
+  totalResults: number;
+}
+
 const TMDB_API_KEY = process.env.TMDB_API_KEY || "844dba0bfd8f3a4f3799f6130ef9e335";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 export const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
+
+// In-memory cache for ultra-fast response and avoiding duplicate API calls
+const tmdbCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 export function getTMDBImageUrl(path: string | null, size: "w500" | "original" = "w500"): string {
   if (!path) return "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&auto=format&fit=crop&q=80";
   return `${TMDB_IMAGE_BASE}/${size}${path}`;
 }
+
+export const MOVIE_GENRES = [
+  { id: 0, name: "All Genres" },
+  { id: 28, name: "Action" },
+  { id: 12, name: "Adventure" },
+  { id: 16, name: "Animation" },
+  { id: 35, name: "Comedy" },
+  { id: 80, name: "Crime" },
+  { id: 99, name: "Documentary" },
+  { id: 18, name: "Drama" },
+  { id: 10751, name: "Family" },
+  { id: 14, name: "Fantasy" },
+  { id: 36, name: "History" },
+  { id: 27, name: "Horror" },
+  { id: 9648, name: "Mystery" },
+  { id: 10749, name: "Romance" },
+  { id: 878, name: "Sci-Fi" },
+  { id: 53, name: "Thriller" },
+  { id: 10752, name: "War" },
+];
+
+export const TV_GENRES = [
+  { id: 0, name: "All Genres" },
+  { id: 10759, name: "Action & Adventure" },
+  { id: 16, name: "Animation" },
+  { id: 35, name: "Comedy" },
+  { id: 80, name: "Crime" },
+  { id: 99, name: "Documentary" },
+  { id: 18, name: "Drama" },
+  { id: 10751, name: "Family" },
+  { id: 10762, name: "Kids" },
+  { id: 9648, name: "Mystery" },
+  { id: 10764, name: "Reality" },
+  { id: 10765, name: "Sci-Fi & Fantasy" },
+  { id: 10768, name: "War & Politics" },
+  { id: 37, name: "Western" },
+];
 
 function mapTMDBItem(item: any, type: "movie" | "tv" = "movie"): TMDBMedia {
   const isMovie = type === "movie" || item.media_type === "movie";
@@ -66,114 +114,243 @@ function mapTMDBItem(item: any, type: "movie" | "tv" = "movie"): TMDBMedia {
   };
 }
 
-// 1. Fetch Trending Movies
-export async function getTrendingMovies(page = 1): Promise<{ results: TMDBMedia[]; totalPages: number }> {
+async function cachedFetch(url: string): Promise<any> {
+  const cached = tmdbCache.get(url);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const res = await fetch(url, { next: { revalidate: 3600 } });
+  if (!res.ok) throw new Error(`TMDB HTTP error ${res.status}`);
+  const data = await res.json();
+  tmdbCache.set(url, { data, timestamp: Date.now() });
+  return data;
+}
+
+// 1. Fetch Trending Movies with Pagination
+export async function getTrendingMovies(page = 1): Promise<TMDBPaginatedResult> {
   try {
-    const res = await fetch(
-      `${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}&page=${page}`,
-      { next: { revalidate: 3600 } }
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}&page=${page}`
     );
-    if (!res.ok) throw new Error("TMDB trending error");
-    const data = await res.json();
     return {
       results: (data.results || []).map((m: any) => mapTMDBItem(m, "movie")),
-      totalPages: data.total_pages || 1,
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
     };
-  } catch (err) {
-    return { results: FALLBACK_MOVIES, totalPages: 1 };
+  } catch {
+    return { results: FALLBACK_MOVIES, page: 1, totalPages: 1, totalResults: FALLBACK_MOVIES.length };
   }
 }
 
-// 2. Fetch Popular Movies
-export async function getPopularMovies(page = 1): Promise<{ results: TMDBMedia[]; totalPages: number }> {
+// 2. Fetch Popular Movies with Pagination
+export async function getPopularMovies(page = 1): Promise<TMDBPaginatedResult> {
   try {
-    const res = await fetch(
-      `${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}&page=${page}`,
-      { next: { revalidate: 3600 } }
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}&page=${page}`
     );
-    if (!res.ok) throw new Error("TMDB popular error");
-    const data = await res.json();
     return {
       results: (data.results || []).map((m: any) => mapTMDBItem(m, "movie")),
-      totalPages: data.total_pages || 1,
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
     };
-  } catch (err) {
-    return { results: FALLBACK_MOVIES, totalPages: 1 };
+  } catch {
+    return { results: FALLBACK_MOVIES, page: 1, totalPages: 1, totalResults: FALLBACK_MOVIES.length };
   }
 }
 
-// 3. Fetch Movie Details
+// 3. Fetch Top Rated Movies with Pagination
+export async function getTopRatedMovies(page = 1): Promise<TMDBPaginatedResult> {
+  try {
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/movie/top_rated?api_key=${TMDB_API_KEY}&page=${page}`
+    );
+    return {
+      results: (data.results || []).map((m: any) => mapTMDBItem(m, "movie")),
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
+    };
+  } catch {
+    return { results: FALLBACK_MOVIES, page: 1, totalPages: 1, totalResults: FALLBACK_MOVIES.length };
+  }
+}
+
+// 4. Fetch Now Playing / In Theaters Movies with Pagination
+export async function getNowPlayingMovies(page = 1): Promise<TMDBPaginatedResult> {
+  try {
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/movie/now_playing?api_key=${TMDB_API_KEY}&page=${page}`
+    );
+    return {
+      results: (data.results || []).map((m: any) => mapTMDBItem(m, "movie")),
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
+    };
+  } catch {
+    return { results: FALLBACK_MOVIES, page: 1, totalPages: 1, totalResults: FALLBACK_MOVIES.length };
+  }
+}
+
+// 5. Discover Movies by Genre, Sort, and Year with Pagination
+export async function discoverMovies({
+  genreId,
+  sortBy = "popularity.desc",
+  year,
+  page = 1,
+}: {
+  genreId?: number;
+  sortBy?: string;
+  year?: number;
+  page?: number;
+}): Promise<TMDBPaginatedResult> {
+  try {
+    let url = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&page=${page}&sort_by=${sortBy}&vote_count.gte=30`;
+    if (genreId && genreId > 0) url += `&with_genres=${genreId}`;
+    if (year) url += `&primary_release_year=${year}`;
+
+    const data = await cachedFetch(url);
+    return {
+      results: (data.results || []).map((m: any) => mapTMDBItem(m, "movie")),
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
+    };
+  } catch {
+    return { results: FALLBACK_MOVIES, page: 1, totalPages: 1, totalResults: FALLBACK_MOVIES.length };
+  }
+}
+
+// 6. Fetch Movie Details
 export async function getMovieDetails(id: number): Promise<TMDBMedia | null> {
   try {
-    const res = await fetch(
-      `${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,recommendations`,
-      { next: { revalidate: 3600 } }
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,recommendations`
     );
-    if (!res.ok) return FALLBACK_MOVIES.find((m) => m.id === id) || null;
-    const data = await res.json();
     return mapTMDBItem(data, "movie");
   } catch {
     return FALLBACK_MOVIES.find((m) => m.id === id) || null;
   }
 }
 
-// 4. Fetch Trending TV Series
-export async function getTrendingTV(page = 1): Promise<{ results: TMDBMedia[]; totalPages: number }> {
+// 7. Fetch Trending TV Series with Pagination
+export async function getTrendingTV(page = 1): Promise<TMDBPaginatedResult> {
   try {
-    const res = await fetch(
-      `${TMDB_BASE_URL}/trending/tv/week?api_key=${TMDB_API_KEY}&page=${page}`,
-      { next: { revalidate: 3600 } }
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/trending/tv/week?api_key=${TMDB_API_KEY}&page=${page}`
     );
-    if (!res.ok) throw new Error("TMDB TV error");
-    const data = await res.json();
     return {
       results: (data.results || []).map((t: any) => mapTMDBItem(t, "tv")),
-      totalPages: data.total_pages || 1,
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
     };
-  } catch (err) {
-    return { results: FALLBACK_TV, totalPages: 1 };
+  } catch {
+    return { results: FALLBACK_TV, page: 1, totalPages: 1, totalResults: FALLBACK_TV.length };
   }
 }
 
-// 5. Fetch Popular TV Series
-export async function getPopularTV(page = 1): Promise<{ results: TMDBMedia[]; totalPages: number }> {
+// 8. Fetch Popular TV Series with Pagination
+export async function getPopularTV(page = 1): Promise<TMDBPaginatedResult> {
   try {
-    const res = await fetch(
-      `${TMDB_BASE_URL}/tv/popular?api_key=${TMDB_API_KEY}&page=${page}`,
-      { next: { revalidate: 3600 } }
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/tv/popular?api_key=${TMDB_API_KEY}&page=${page}`
     );
-    if (!res.ok) throw new Error("TMDB TV popular error");
-    const data = await res.json();
     return {
       results: (data.results || []).map((t: any) => mapTMDBItem(t, "tv")),
-      totalPages: data.total_pages || 1,
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
     };
-  } catch (err) {
-    return { results: FALLBACK_TV, totalPages: 1 };
+  } catch {
+    return { results: FALLBACK_TV, page: 1, totalPages: 1, totalResults: FALLBACK_TV.length };
   }
 }
 
-// 6. Fetch TV Series Details (with seasons)
+// 9. Fetch Top Rated TV Series with Pagination
+export async function getTopRatedTV(page = 1): Promise<TMDBPaginatedResult> {
+  try {
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/tv/top_rated?api_key=${TMDB_API_KEY}&page=${page}`
+    );
+    return {
+      results: (data.results || []).map((t: any) => mapTMDBItem(t, "tv")),
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
+    };
+  } catch {
+    return { results: FALLBACK_TV, page: 1, totalPages: 1, totalResults: FALLBACK_TV.length };
+  }
+}
+
+// 10. Fetch On The Air / Airing Today TV Series with Pagination
+export async function getOnTheAirTV(page = 1): Promise<TMDBPaginatedResult> {
+  try {
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/tv/on_the_air?api_key=${TMDB_API_KEY}&page=${page}`
+    );
+    return {
+      results: (data.results || []).map((t: any) => mapTMDBItem(t, "tv")),
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
+    };
+  } catch {
+    return { results: FALLBACK_TV, page: 1, totalPages: 1, totalResults: FALLBACK_TV.length };
+  }
+}
+
+// 11. Discover TV by Genre, Sort, and Year with Pagination
+export async function discoverTV({
+  genreId,
+  sortBy = "popularity.desc",
+  year,
+  page = 1,
+}: {
+  genreId?: number;
+  sortBy?: string;
+  year?: number;
+  page?: number;
+}): Promise<TMDBPaginatedResult> {
+  try {
+    let url = `${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&page=${page}&sort_by=${sortBy}&vote_count.gte=30`;
+    if (genreId && genreId > 0) url += `&with_genres=${genreId}`;
+    if (year) url += `&first_air_date_year=${year}`;
+
+    const data = await cachedFetch(url);
+    return {
+      results: (data.results || []).map((t: any) => mapTMDBItem(t, "tv")),
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
+    };
+  } catch {
+    return { results: FALLBACK_TV, page: 1, totalPages: 1, totalResults: FALLBACK_TV.length };
+  }
+}
+
+// 12. Fetch TV Series Details (with seasons)
 export async function getTVDetails(id: number): Promise<TMDBMedia | null> {
   try {
-    const res = await fetch(
-      `${TMDB_BASE_URL}/tv/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,recommendations`,
-      { next: { revalidate: 3600 } }
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/tv/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,recommendations`
     );
-    if (!res.ok) return FALLBACK_TV.find((t) => t.id === id) || null;
-    const data = await res.json();
     return mapTMDBItem(data, "tv");
   } catch {
     return FALLBACK_TV.find((t) => t.id === id) || null;
   }
 }
 
-// 7. Search Movies and TV Shows
+// 13. Search Movies and TV Shows with Pagination
 export async function searchTMDB(
   query: string,
   type: "movie" | "tv" | "multi" = "multi",
   page = 1
-): Promise<{ results: TMDBMedia[]; totalPages: number }> {
+): Promise<TMDBPaginatedResult> {
   if (!query.trim()) {
     if (type === "tv") return getTrendingTV(page);
     return getTrendingMovies(page);
@@ -181,25 +358,26 @@ export async function searchTMDB(
 
   try {
     const endpoint = type === "multi" ? "search/multi" : type === "movie" ? "search/movie" : "search/tv";
-    const res = await fetch(
-      `${TMDB_BASE_URL}/${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}`,
-      { next: { revalidate: 60 } }
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${page}`
     );
-    if (!res.ok) throw new Error("TMDB search error");
-    const data = await res.json();
     const filtered = (data.results || []).filter(
-      (item: any) => (item.media_type === "movie" || item.media_type === "tv" || type !== "multi") && (item.poster_path || item.backdrop_path)
+      (item: any) =>
+        (item.media_type === "movie" || item.media_type === "tv" || type !== "multi") &&
+        (item.poster_path || item.backdrop_path)
     );
     return {
       results: filtered.map((item: any) => mapTMDBItem(item, item.media_type || type)),
-      totalPages: data.total_pages || 1,
+      page,
+      totalPages: Math.min(data.total_pages || 1, 500),
+      totalResults: data.total_results || 0,
     };
   } catch {
-    return { results: [], totalPages: 0 };
+    return { results: [], page: 1, totalPages: 0, totalResults: 0 };
   }
 }
 
-// ── Built-in Curated Fallback Blockbusters ────────────────────────────────────
+// ── Curated Fallback Blockbusters ───────────────────────────────────────────
 const FALLBACK_MOVIES: TMDBMedia[] = [
   {
     id: 693134,

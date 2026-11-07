@@ -5,6 +5,7 @@ import { WatchHistoryItem, WatchlistItem, WatchlistStatus } from "@/types/anime"
 const HISTORY_KEY = "yugito_watch_history";
 const WATCHLIST_KEY = "yugito_watchlist";
 const SETTINGS_KEY = "yugito_player_settings";
+const MEDIA_PROGRESS_KEY = "yuyu_media_progress";
 
 export interface PlayerSettings {
   volume: number;
@@ -12,6 +13,9 @@ export interface PlayerSettings {
   preferredAudio: "sub" | "dub";
   autoPlayNext: boolean;
   autoSkipIntro: boolean;
+  subtitleSize: "small" | "medium" | "large";
+  subtitleBg: "solid" | "translucent" | "none";
+  subtitleColor: "white" | "yellow";
 }
 
 const DEFAULT_SETTINGS: PlayerSettings = {
@@ -20,9 +24,12 @@ const DEFAULT_SETTINGS: PlayerSettings = {
   preferredAudio: "sub",
   autoPlayNext: true,
   autoSkipIntro: false,
+  subtitleSize: "medium",
+  subtitleBg: "solid",
+  subtitleColor: "white",
 };
 
-// --- WATCH HISTORY ---
+// --- WATCH HISTORY (ANIME) ---
 
 export function getWatchHistory(): WatchHistoryItem[] {
   if (typeof window === "undefined") return [];
@@ -89,6 +96,61 @@ export function clearWatchHistory(): void {
     window.dispatchEvent(new CustomEvent("yugito_history_updated"));
   } catch (e) {
     console.error("Failed to clear history:", e);
+  }
+}
+
+// --- MOVIE & TV PROGRESS TRACKING ---
+
+export interface MediaProgressRecord {
+  mediaType: "movie" | "tv";
+  id: number;
+  title: string;
+  season?: number;
+  episode?: number;
+  lastWatchedAt: number;
+}
+
+export function saveMediaProgress(
+  mediaType: "movie" | "tv",
+  id: number,
+  title: string,
+  extra?: { season?: number; episode?: number }
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(MEDIA_PROGRESS_KEY);
+    const records: MediaProgressRecord[] = raw ? JSON.parse(raw) : [];
+    const index = records.findIndex((r) => r.mediaType === mediaType && r.id === id);
+    const newRecord: MediaProgressRecord = {
+      mediaType,
+      id,
+      title,
+      season: extra?.season,
+      episode: extra?.episode,
+      lastWatchedAt: Date.now(),
+    };
+
+    if (index >= 0) {
+      records[index] = newRecord;
+    } else {
+      records.unshift(newRecord);
+    }
+
+    localStorage.setItem(MEDIA_PROGRESS_KEY, JSON.stringify(records.slice(0, 100)));
+  } catch (e) {
+    console.error("Failed to save media progress:", e);
+  }
+}
+
+export function getMediaProgress(mediaType: "movie" | "tv", id: number): MediaProgressRecord | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(MEDIA_PROGRESS_KEY);
+    if (!raw) return null;
+    const records: MediaProgressRecord[] = JSON.parse(raw);
+    return records.find((r) => r.mediaType === mediaType && r.id === id) || null;
+  } catch (e) {
+    return null;
   }
 }
 

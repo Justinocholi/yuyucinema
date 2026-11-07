@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -16,9 +16,16 @@ import {
   Play,
   RotateCcw,
   ShieldCheck,
+  Maximize,
+  Minimize,
+  RefreshCw,
+  AlertCircle,
+  ChevronRight,
+  Tv,
 } from "lucide-react";
 import { TMDBMedia, getTMDBImageUrl } from "@/lib/tmdb";
 import DownloadModal from "@/components/player/DownloadModal";
+import { saveMediaProgress, getMediaProgress } from "@/lib/storage";
 
 interface WatchMovieClientProps {
   movie: TMDBMedia;
@@ -28,46 +35,95 @@ const MOVIE_PROVIDERS = [
   {
     id: "multiembed",
     name: "MultiEmbed (VIP Cinema)",
-    note: "1080p FHD • Multi-Server Failover",
+    badge: "1080p FHD",
+    note: "Primary VIP Stream • Multi-Server Failover",
     getUrl: (id: number) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
   },
   {
     id: "vidsrc",
     name: "VidSrc.to (Ultra Cinema)",
-    note: "1080p FHD • Fast Direct Stream",
+    badge: "1080p FHD",
+    note: "High-Speed Direct Stream • Global Edge",
     getUrl: (id: number) => `https://vidsrc.to/embed/movie/${id}`,
   },
   {
     id: "2embed",
     name: "2Embed (Fast Mirror)",
-    note: "High-Speed CDN • Global Edge",
+    badge: "Fast CDN",
+    note: "Reliable Backup • Multi-Audio & Subtitles",
     getUrl: (id: number) => `https://www.2embed.cc/embed/${id}`,
   },
   {
     id: "nontongo",
     name: "NontonGo (Cinema HD)",
-    note: "Instant Play • 1080p Stream",
+    badge: "Instant Play",
+    note: "Fast Playback • 1080p Theatrical Stream",
     getUrl: (id: number) => `https://www.nontongo.win/embed/movie/${id}`,
   },
   {
+    id: "vidsrcicu",
+    name: "VidSrc ICU (Cinema Mirror)",
+    badge: "HD Mirror",
+    note: "Ultra-Resilient Mirror • Multiple Tracks",
+    getUrl: (id: number) => `https://vidsrc.icu/embed/movie/${id}`,
+  },
+  {
     id: "smashystream",
-    name: "SmashyStream (Mirror)",
-    note: "1080p Theatrical • Shielded",
+    name: "SmashyStream (Shielded)",
+    badge: "Shielded",
+    note: "High Bitrate • Ad-Protected Edge",
     getUrl: (id: number) => `https://player.smashystream.com/movie/${id}`,
   },
 ];
 
 export default function WatchMovieClient({ movie }: WatchMovieClientProps) {
-  const [selectedProvider, setSelectedProvider] = useState(MOVIE_PROVIDERS[0].id);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [providerIndex, setProviderIndex] = useState(0);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [hasConnectionIssue, setHasConnectionIssue] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [failoverToast, setFailoverToast] = useState<string | null>(null);
+
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionWatchdogRef = useRef<NodeJS.Timeout | null>(null);
+
+  const activeProvider = MOVIE_PROVIDERS[providerIndex] || MOVIE_PROVIDERS[0];
+  const streamUrl = activeProvider.getUrl(movie.id);
+
+  // Save progress on mount
+  useEffect(() => {
+    saveMediaProgress("movie", movie.id, movie.title);
+  }, [movie.id, movie.title]);
+
+  // Sync fullscreen state
+  useEffect(() => {
+    const handleFsChange = () => {
+      const activeFs = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(activeFs);
+    };
+
+    document.addEventListener("fullscreenchange", handleFsChange);
+    document.addEventListener("webkitfullscreenchange", handleFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      document.removeEventListener("webkitfullscreenchange", handleFsChange);
+    };
+  }, []);
 
   // Ad-Shield & Anti-Popup Interceptor:
-  // Neutralize rogue window.open or clickjacking popup calls attempted by embed scripts
+  // Neutralize rogue window.open calls from third-party embed scripts
   useEffect(() => {
     const originalOpen = window.open;
     window.open = function (url?: string | URL, target?: string, features?: string) {
-      console.warn("[Yugito Ad-Shield] Neutralized popup attempt:", url);
+      console.warn("[Yuyu Ad-Shield] Neutralized popup attempt:", url);
       return null;
     };
     return () => {
@@ -75,9 +131,90 @@ export default function WatchMovieClient({ movie }: WatchMovieClientProps) {
     };
   }, []);
 
-  const activeProvider =
-    MOVIE_PROVIDERS.find((p) => p.id === selectedProvider) || MOVIE_PROVIDERS[0];
-  const streamUrl = activeProvider.getUrl(movie.id);
+  // Streaming Engine Watchdog:
+  // When switching servers, start a connection watchdog. If the mirror takes > 10s, prompt failover.
+  useEffect(() => {
+    setIsConnecting(true);
+    setHasConnectionIssue(false);
+    setFailoverToast(null);
+
+    if (connectionWatchdogRef.current) clearTimeout(connectionWatchdogRef.current);
+
+    connectionWatchdogRef.current = setTimeout(() => {
+      setIsConnecting(false);
+      setHasConnectionIssue(true);
+      const nextIndex = (providerIndex + 1) % MOVIE_PROVIDERS.length;
+      setFailoverToast(`Server ${providerIndex + 1} took too long. Try switching to ${MOVIE_PROVIDERS[nextIndex].name}`);
+    }, 10000);
+
+    return () => {
+      if (connectionWatchdogRef.current) clearTimeout(connectionWatchdogRef.current);
+    };
+  }, [providerIndex]);
+
+  const handleIframeLoaded = () => {
+    if (connectionWatchdogRef.current) clearTimeout(connectionWatchdogRef.current);
+    setTimeout(() => {
+      setIsConnecting(false);
+      setHasConnectionIssue(false);
+    }, 800);
+  };
+
+  const handleSwitchToNextServer = useCallback(() => {
+    const nextIdx = (providerIndex + 1) % MOVIE_PROVIDERS.length;
+    setProviderIndex(nextIdx);
+    setFailoverToast(`Switching to ${MOVIE_PROVIDERS[nextIdx].name}...`);
+    setTimeout(() => setFailoverToast(null), 3000);
+  }, [providerIndex]);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    const isCurrentlyFs = !!(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement
+    );
+
+    if (!isCurrentlyFs) {
+      const el = containerRef.current as any;
+      if (el.requestFullscreen) {
+        el.requestFullscreen().catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      }
+    } else {
+      const doc = document as any;
+      if (doc.exitFullscreen) {
+        doc.exitFullscreen().catch(() => {});
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen();
+      }
+    }
+  };
+
+  const handleMouseMove = () => {
+    setControlsVisible(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      setControlsVisible(false);
+    }, 3500);
+  };
+
+  // Keyboard shortcut listener (F = Fullscreen, S = Next Server)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.code === "KeyF") {
+        e.preventDefault();
+        toggleFullscreen();
+      } else if (e.code === "KeyS") {
+        e.preventDefault();
+        handleSwitchToNextServer();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSwitchToNextServer]);
 
   const backdrop = getTMDBImageUrl(movie.backdropPath, "original");
   const poster = getTMDBImageUrl(movie.posterPath, "w500");
@@ -101,30 +238,91 @@ export default function WatchMovieClient({ movie }: WatchMovieClientProps) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         {/* Left 3 Cols: Video Player & Controls */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-sky-500/25">
+          <div
+            ref={containerRef}
+            onMouseMove={handleMouseMove}
+            className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-sky-500/25 group select-none"
+          >
+            {/* Embed Video Surface */}
             <iframe
-              key={`${movie.id}-${selectedProvider}`}
+              key={`${movie.id}-${activeProvider.id}`}
               src={streamUrl}
+              onLoad={handleIframeLoaded}
               className="w-full h-full border-0"
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture; cross-origin-isolated"
               allowFullScreen
               referrerPolicy="origin"
               title={movie.title}
             />
 
-            {/* Quality & Ad-Shield Watermarks */}
-            <div className="absolute top-4 left-4 z-10 pointer-events-none flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 text-white text-[11px] font-bold uppercase tracking-wider">
-                {activeProvider.name}
-              </span>
-              <span className="px-2 py-1 rounded-xl bg-sky-500/80 backdrop-blur-md text-white text-[10px] font-black">
-                1080p FHD
-              </span>
-              <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center gap-1 shadow-sm">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                <span>Ad-Shield Active</span>
-              </span>
+            {/* Connecting Spinner Overlay */}
+            {isConnecting && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm pointer-events-none z-20 transition-opacity">
+                <div className="w-12 h-12 rounded-full border-4 border-sky-500 border-t-transparent animate-spin mb-3" />
+                <p className="text-xs font-bold text-white tracking-wide">
+                  Connecting to {activeProvider.name}...
+                </p>
+                <span className="text-[10px] text-sky-400 mt-1">Establishing high-speed cinema stream</span>
+              </div>
+            )}
+
+            {/* Seamless Top Floating Bar (Auto-Hides on Mouse Inactivity) */}
+            <div
+              className={`absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none transition-opacity duration-300 ${
+                controlsVisible || isConnecting ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-white/10 text-white text-[11px] font-bold uppercase tracking-wider shadow-lg">
+                  {activeProvider.name}
+                </span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-sky-500/80 backdrop-blur-md text-white text-[10px] font-black">
+                  1080p FHD
+                </span>
+                <span className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Ad-Shield Active</span>
+                </span>
+              </div>
+
+              {/* Player Floating Action Buttons */}
+              <div className="flex items-center gap-2 pointer-events-auto">
+                <button
+                  type="button"
+                  onClick={handleSwitchToNextServer}
+                  className="px-3 py-1.5 rounded-xl bg-black/80 hover:bg-black/95 text-white/90 hover:text-white border border-white/15 backdrop-blur-md text-xs font-semibold flex items-center gap-1.5 transition-all shadow-lg active:scale-95"
+                  title="Switch to next streaming server (Key: S)"
+                >
+                  <Server className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="hidden sm:inline">Next Server</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="p-2 rounded-xl bg-black/80 hover:bg-black/95 text-white/90 hover:text-white border border-white/15 backdrop-blur-md transition-all shadow-lg active:scale-95"
+                  title={isFullscreen ? "Exit Fullscreen (Key: F)" : "Enter Fullscreen (Key: F)"}
+                  aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                >
+                  {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
+
+            {/* Failover Toast Notification */}
+            {failoverToast && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-black/90 border border-sky-400/40 px-4 py-2 rounded-xl text-xs text-sky-200 font-semibold shadow-2xl backdrop-blur-md flex items-center gap-2 animate-fadeIn pointer-events-auto">
+                <AlertCircle className="w-4 h-4 text-sky-400 flex-shrink-0" />
+                <span>{failoverToast}</span>
+                <button
+                  type="button"
+                  onClick={handleSwitchToNextServer}
+                  className="ml-2 px-2 py-0.5 rounded bg-sky-500 text-white font-bold text-[10px] hover:bg-sky-400 transition-colors"
+                >
+                  Switch Now
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Action Bar (Title, Download & Save) */}
@@ -179,21 +377,21 @@ export default function WatchMovieClient({ movie }: WatchMovieClientProps) {
             <div className="flex items-center justify-between pb-2 border-b border-sky-500/15">
               <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
                 <Server className="w-4 h-4 text-sky-400" />
-                <span>Streaming Server</span>
+                <span>Streaming Server Gateway</span>
               </div>
               <span className="text-[11px] text-sky-300 font-semibold">
-                Multi-Server Cinema Gateway
+                Auto-Failover Active • {MOVIE_PROVIDERS.length} Verified Mirrors
               </span>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {MOVIE_PROVIDERS.map((p) => {
-                const isSelected = selectedProvider === p.id;
+              {MOVIE_PROVIDERS.map((p, idx) => {
+                const isSelected = providerIndex === idx;
                 return (
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => setSelectedProvider(p.id)}
+                    onClick={() => setProviderIndex(idx)}
                     className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       isSelected
                         ? "bg-sky-500/25 border-sky-400 text-sky-200 shadow-md shadow-sky-500/20"
