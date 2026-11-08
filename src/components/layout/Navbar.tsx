@@ -19,6 +19,7 @@ import {
   Tv,
   Film,
   Clapperboard,
+  Trophy,
 } from "lucide-react";
 import { getWatchlist } from "@/lib/storage";
 
@@ -79,9 +80,10 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Home", href: "/", icon: Home },
-    { name: "Anime", href: "/explore", icon: Compass },
+    { name: "Sports", href: "/sports", icon: Trophy, isSports: true },
     { name: "Movies", href: "/movies", icon: Film },
     { name: "TV Series", href: "/tv", icon: Clapperboard },
+    { name: "Anime", href: "/explore", icon: Compass },
     { name: "Live TV", href: "/channels", icon: Tv, isLive: true },
     { name: "Trending", href: "/trending", icon: TrendingUp },
     { name: "Schedule", href: "/schedule", icon: Calendar },
@@ -123,7 +125,7 @@ export default function Navbar() {
               </Link>
 
               {/* Desktop Navigation Links */}
-              <nav className="hidden lg:flex items-center gap-1">
+              <nav className="hidden xl:flex items-center gap-1">
                 {navLinks.map((link) => {
                   const isActive =
                     link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
@@ -140,10 +142,16 @@ export default function Navbar() {
                     >
                       <Icon className={`w-3.5 h-3.5 ${isActive ? "text-sky-400" : ""}`} />
                       <span>{link.name}</span>
+                      {link.isSports && (
+                        <span className="flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          LIVE
+                        </span>
+                      )}
                       {link.isLive && (
                         <span className="flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                          LIVE
+                          24/7
                         </span>
                       )}
                       {Boolean(link.badge) && link.badge! > 0 && (
@@ -158,10 +166,33 @@ export default function Navbar() {
                   );
                 })}
               </nav>
+
+              {/* Tablet Compact Nav Links */}
+              <nav className="hidden lg:flex xl:hidden items-center gap-1">
+                {navLinks.slice(0, 6).map((link) => {
+                  const isActive =
+                    link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+                  const Icon = link.icon;
+                  return (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      className={`relative flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        isActive
+                          ? "text-white bg-sky-500/20 border border-sky-400/30 text-sky-200"
+                          : "text-yugito-muted hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{link.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
 
             {/* Right: Search, Profile & Mobile Hamburger */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Desktop Search Bar */}
               <form onSubmit={handleSearchSubmit} className="hidden sm:flex relative items-center">
                 <input
@@ -169,8 +200,8 @@ export default function Navbar() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search anime... (/)"
-                  className="w-48 lg:w-64 bg-yugito-surface/80 hover:bg-yugito-surface text-yugito-text placeholder-yugito-muted/60 text-sm px-3.5 py-2 pl-9 rounded-full border border-yugito-border focus:border-yugito-accent focus:w-72 focus:outline-none transition-all"
+                  placeholder="Search movies, sports, anime... (/)"
+                  className="w-44 md:w-56 lg:w-64 bg-yugito-surface/80 hover:bg-yugito-surface text-yugito-text placeholder-yugito-muted/60 text-xs sm:text-sm px-3.5 py-2 pl-9 rounded-full border border-yugito-border focus:border-yugito-accent focus:w-72 focus:outline-none transition-all"
                 />
                 <Search className="w-4 h-4 text-yugito-muted absolute left-3 pointer-events-none" />
                 {searchQuery && (
@@ -188,21 +219,21 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => setSearchOpen(!searchOpen)}
-                className="sm:hidden p-2 rounded-lg bg-yugito-surface/80 text-yugito-muted hover:text-white border border-yugito-border"
+                className="sm:hidden p-2 rounded-xl bg-yugito-surface/80 text-yugito-muted hover:text-white border border-yugito-border"
                 aria-label="Search"
               >
-                <Search className="w-5 h-5" />
+                <Search className="w-4 h-4" />
               </button>
 
               {/* History Button */}
               <Link
                 href="/history"
-                className={`p-2 rounded-lg text-yugito-muted hover:text-white hover:bg-yugito-surface/80 border border-transparent hover:border-yugito-border transition-colors ${
-                  pathname === "/history" ? "text-yugito-accent" : ""
+                className={`p-2 rounded-xl text-yugito-muted hover:text-white hover:bg-yugito-surface/80 border border-transparent hover:border-yugito-border transition-colors ${
+                  pathname === "/history" ? "text-sky-400 bg-sky-500/10 border-sky-500/20" : ""
                 }`}
                 title="Watch History"
               >
-                <History className="w-5 h-5" />
+                <History className="w-4 h-4" />
               </Link>
 
               {/* Profile Dropdown */}
@@ -227,6 +258,13 @@ export default function Navbar() {
                       </div>
                     </div>
                     <Link
+                      href="/sports"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-yugito-muted hover:text-white hover:bg-yugito-surface"
+                    >
+                      <Trophy className="w-4 h-4 text-sky-400" /> Live Sports Hub
+                    </Link>
+                    <Link
                       href="/watchlist"
                       onClick={() => setProfileOpen(false)}
                       className="flex items-center justify-between px-4 py-2.5 text-yugito-muted hover:text-white hover:bg-yugito-surface"
@@ -247,11 +285,13 @@ export default function Navbar() {
                     >
                       <History className="w-4 h-4" /> Viewing History
                     </Link>
-                    <div className="border-t border-yugito-border mt-1 pt-1">
-                      <div className="px-4 py-2 text-[11px] text-yugito-subtle leading-tight">
-                        Cloud sync and authentication will be available in future releases. All progress is preserved locally.
-                      </div>
-                    </div>
+                    <Link
+                      href="/sports/admin"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-[11px] text-sky-300 hover:text-white hover:bg-sky-500/10 border-t border-yugito-border"
+                    >
+                      <span>Sports Stream Admin</span>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -276,8 +316,8 @@ export default function Navbar() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search anime, movies, series..."
-                  className="w-full bg-[#0c1527]/90 text-yugito-text placeholder-yugito-muted/60 text-sm px-4 py-2.5 pl-10 rounded-xl border border-sky-500/30 focus:border-sky-400 focus:outline-none"
+                  placeholder="Search movies, anime, sports..."
+                  className="w-full bg-[#0c1527]/90 text-yugito-text placeholder-yugito-muted/60 text-xs px-4 py-2.5 pl-10 rounded-xl border border-sky-500/30 focus:border-sky-400 focus:outline-none"
                   autoFocus
                 />
                 <Search className="w-4 h-4 text-yugito-muted absolute left-3.5" />
@@ -296,7 +336,7 @@ export default function Navbar() {
 
           {/* Mobile Menu Dropdown */}
           {mobileMenuOpen && (
-            <nav className="lg:hidden mt-3 py-3 border-t border-sky-500/20 flex flex-col gap-1.5 animate-fadeIn bg-[#0c1527]/95 backdrop-blur-xl p-3 rounded-2xl border border-sky-500/20 shadow-2xl">
+            <nav className="lg:hidden mt-3 py-3 border-t border-sky-500/20 flex flex-col gap-1 animate-fadeIn bg-[#0c1527]/95 backdrop-blur-xl p-3 rounded-2xl border border-sky-500/20 shadow-2xl">
               {navLinks.map((link) => {
                 const isActive =
                   link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
@@ -315,10 +355,16 @@ export default function Navbar() {
                     <div className="flex items-center gap-3">
                       <Icon className={`w-4 h-4 ${isActive ? "text-sky-400" : ""}`} />
                       <span>{link.name}</span>
+                      {link.isSports && (
+                        <span className="flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          LIVE
+                        </span>
+                      )}
                       {link.isLive && (
                         <span className="flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                          LIVE
+                          24/7
                         </span>
                       )}
                     </div>

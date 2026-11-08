@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Anime } from "@/types/anime";
 import { TMDBMedia, getTMDBImageUrl, MOVIE_GENRES } from "@/lib/tmdb";
-import { searchAnime, getTopAnimeMovies } from "@/lib/anilist";
+import { searchAnime } from "@/lib/anilist";
 import AnimeGrid from "@/components/anime/AnimeGrid";
 
 interface MoviesClientProps {
@@ -279,13 +279,13 @@ export default function MoviesClient({
   const hasMoreAnime = animeHasNext;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-20 space-y-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-20 space-y-6 sm:space-y-8">
       {/* Cinematic Banner */}
-      <div className="relative rounded-3xl p-6 sm:p-10 bg-[#0c1527]/80 backdrop-blur-xl border border-sky-500/20 shadow-2xl overflow-hidden">
+      <div className="relative rounded-2xl sm:rounded-3xl p-5 sm:p-10 bg-[#0c1527]/80 backdrop-blur-xl border border-sky-500/20 shadow-2xl overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-2xl space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-bold uppercase tracking-wider">
               <Film className="w-3.5 h-3.5 text-sky-400" />
               <span>Global Cinema & Anime Movies</span>
@@ -295,32 +295,32 @@ export default function MoviesClient({
             </span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
             Feature Films Hub
           </h1>
-          <p className="text-sm text-yugito-muted leading-relaxed">
+          <p className="text-xs sm:text-sm text-yugito-muted leading-relaxed">
             Experience blockbuster Hollywood cinema, award-winning dramas, and legendary anime feature films with multi-audio Sub/Dub, smart stream failover, and direct high-speed download.
           </p>
         </div>
       </div>
 
       {/* Main Tab Switcher: Cinema Movies vs Anime Films */}
-      <div className="flex items-center justify-between flex-wrap gap-4 p-2 rounded-2xl bg-[#0c1527]/90 border border-sky-500/20 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-2xl bg-[#0c1527]/90 border border-sky-500/20 backdrop-blur-xl">
+        <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => {
               setActiveTab("cinema");
               setSearchQuery("");
             }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-initial justify-center flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all text-center ${
               activeTab === "cinema"
                 ? "bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-sky-500/30 border border-sky-400/40"
                 : "text-yugito-muted hover:text-white hover:bg-white/5"
             }`}
           >
-            <Clapperboard className="w-4 h-4" />
-            <span>Cinema & Hollywood Movies</span>
+            <Clapperboard className="w-4 h-4 shrink-0" />
+            <span className="truncate">Cinema & Movies</span>
           </button>
 
           <button
@@ -329,18 +329,18 @@ export default function MoviesClient({
               setActiveTab("anime");
               setSearchQuery("");
             }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-initial justify-center flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all text-center ${
               activeTab === "anime"
                 ? "bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-sky-500/30 border border-sky-400/40"
                 : "text-yugito-muted hover:text-white hover:bg-white/5"
             }`}
           >
-            <Sparkles className="w-4 h-4" />
-            <span>Anime Feature Films</span>
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span className="truncate">Anime Films</span>
           </button>
         </div>
 
-        <div className="text-xs text-sky-300 font-semibold px-3">
+        <div className="text-xs text-sky-300 font-semibold px-2 sm:px-3 text-center sm:text-right">
           {activeTab === "cinema"
             ? `${cinemaList.length} Loaded (${currentPage} / ${totalPages} Pages)`
             : `${animeList.length} Anime Films Loaded`}
@@ -348,7 +348,7 @@ export default function MoviesClient({
       </div>
 
       {/* Search & Filter Controls */}
-      <div className="p-4 rounded-2xl bg-[#0c1527]/85 backdrop-blur-xl border border-sky-500/20 space-y-4">
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-[#0c1527]/85 backdrop-blur-xl border border-sky-500/20 space-y-4">
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-yugito-muted" />
@@ -358,7 +358,7 @@ export default function MoviesClient({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               activeTab === "cinema"
-                ? "Search movies (e.g. Dune, Deadpool, Oppenheimer, Inception, Batman)..."
+                ? "Search movies (e.g. Dune, Deadpool, Oppenheimer, Inception)..."
                 : "Search anime films (e.g. Your Name, Mugen Train, Spirited Away)..."
             }
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#101d36]/80 border border-sky-500/25 focus:border-sky-400 focus:outline-none text-xs text-white placeholder-yugito-muted"
@@ -368,7 +368,7 @@ export default function MoviesClient({
         {/* Categories Strip for Cinema (only when not searching) */}
         {activeTab === "cinema" && !searchQuery.trim() && (
           <div className="space-y-3 pt-1 border-t border-sky-500/15">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
               {CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
                 const isSelected = selectedCategory === cat.id;
@@ -380,7 +380,7 @@ export default function MoviesClient({
                       setSelectedCategory(cat.id);
                       setSelectedGenreId(0);
                     }}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                       isSelected
                         ? "bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-md shadow-sky-500/25 border border-sky-400/40"
                         : "bg-[#101d36]/70 border border-sky-500/15 text-yugito-muted hover:text-white hover:bg-white/5"
@@ -431,7 +431,7 @@ export default function MoviesClient({
                   key={g}
                   type="button"
                   onClick={() => setAnimeGenre(g)}
-                  className={`px-3 py-1 rounded-xl whitespace-nowrap transition-all ${
+                  className={`px-3 py-1 rounded-xl whitespace-nowrap text-[11px] transition-all ${
                     isSelected
                       ? "bg-sky-500 text-white font-bold shadow-sm"
                       : "bg-[#101d36]/60 border border-sky-500/10 text-yugito-muted hover:text-white"
@@ -449,7 +449,7 @@ export default function MoviesClient({
       {activeTab === "cinema" ? (
         <div className="space-y-8">
           {/* Cinema Movies Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
             {cinemaList.map((m) => {
               const poster = getTMDBImageUrl(m.posterPath, "w500");
               return (
@@ -499,7 +499,7 @@ export default function MoviesClient({
 
           {/* Initial Loading Skeletons */}
           {isLoadingInitial && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="animate-pulse space-y-2 rounded-2xl p-2 bg-[#0c1527]/40 border border-sky-500/10">
                   <div className="aspect-[2/3] w-full rounded-xl bg-white/5" />
@@ -520,7 +520,7 @@ export default function MoviesClient({
                 type="button"
                 onClick={handleLoadMoreCinema}
                 disabled={isLoadingMore || isLoadingInitial}
-                className="flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold text-xs uppercase tracking-wider shadow-xl shadow-sky-500/25 transition-all hover:scale-105 active:scale-95 border border-sky-400/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="flex items-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold text-xs uppercase tracking-wider shadow-xl shadow-sky-500/25 transition-all hover:scale-105 active:scale-95 border border-sky-400/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-center"
               >
                 {isLoadingMore ? (
                   <>
@@ -535,7 +535,7 @@ export default function MoviesClient({
                 )}
               </button>
             ) : (
-              <div className="p-4 rounded-xl bg-[#0c1527]/80 border border-sky-500/20 text-center text-xs text-yugito-muted max-w-md">
+              <div className="p-4 rounded-xl bg-[#0c1527]/80 border border-sky-500/20 text-center text-xs text-yugito-muted max-w-md mx-3">
                 <span className="font-bold text-white">End of Catalogue: </span>
                 You have reached the end of the available movie library for this filter ({cinemaList.length} titles displayed).
               </div>
@@ -560,7 +560,7 @@ export default function MoviesClient({
                 type="button"
                 onClick={handleLoadMoreAnime}
                 disabled={isLoadingAnimeMore || isLoadingInitial}
-                className="flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold text-xs uppercase tracking-wider shadow-xl shadow-sky-500/25 transition-all hover:scale-105 active:scale-95 border border-sky-400/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="flex items-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold text-xs uppercase tracking-wider shadow-xl shadow-sky-500/25 transition-all hover:scale-105 active:scale-95 border border-sky-400/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-center"
               >
                 {isLoadingAnimeMore ? (
                   <>
@@ -575,7 +575,7 @@ export default function MoviesClient({
                 )}
               </button>
             ) : (
-              <div className="p-4 rounded-xl bg-[#0c1527]/80 border border-sky-500/20 text-center text-xs text-yugito-muted max-w-md">
+              <div className="p-4 rounded-xl bg-[#0c1527]/80 border border-sky-500/20 text-center text-xs text-yugito-muted max-w-md mx-3">
                 <span className="font-bold text-white">End of Catalogue: </span>
                 All anime feature films for this category have been loaded.
               </div>

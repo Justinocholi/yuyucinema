@@ -81,7 +81,7 @@ export default function FeaturedHero({ animeList }: FeaturedHeroProps) {
 
   return (
     <div
-      className="relative w-full min-h-[520px] sm:min-h-[580px] lg:min-h-[640px] flex items-center overflow-hidden"
+      className="relative w-full min-h-[480px] sm:min-h-[580px] lg:min-h-[640px] flex items-center overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -103,10 +103,10 @@ export default function FeaturedHero({ animeList }: FeaturedHeroProps) {
       )}
 
       {/* Content Container */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-20 pb-16">
-        <div className="max-w-2xl space-y-4 animate-fadeIn">
+      <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full pt-16 sm:pt-20 pb-16 sm:pb-20">
+        <div className="max-w-2xl space-y-3 sm:space-y-4 animate-fadeIn">
           {/* Badges / Metadata */}
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs font-semibold">
             {current.averageScore && (
               <span className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-yugito-card/90 border border-yugito-border text-yugito-text">
                 <Star className="w-3.5 h-3.5 text-yugito-gold fill-yugito-gold" />
@@ -136,11 +136,11 @@ export default function FeaturedHero({ animeList }: FeaturedHeroProps) {
 
           {/* Titles */}
           <div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white line-clamp-2 drop-shadow-md">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white line-clamp-2 drop-shadow-md">
               {title}
             </h1>
             {altTitle && (
-              <p className="text-sm sm:text-base text-yugito-muted font-medium mt-1 italic line-clamp-1">
+              <p className="text-xs sm:text-base text-yugito-muted font-medium mt-1 italic line-clamp-1">
                 {altTitle}
               </p>
             )}
@@ -163,16 +163,16 @@ export default function FeaturedHero({ animeList }: FeaturedHeroProps) {
 
           {/* Synopsis */}
           {synopsis && (
-            <p className="text-sm sm:text-base text-yugito-muted line-clamp-3 leading-relaxed drop-shadow-sm max-w-xl">
+            <p className="text-xs sm:text-sm md:text-base text-yugito-muted line-clamp-3 leading-relaxed drop-shadow-sm max-w-xl">
               {synopsis}
             </p>
           )}
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-2">
             <Link
               href={`/watch/${current.id}/1`}
-              className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-black text-sm shadow-xl shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 border border-sky-400/30"
+              className="flex-1 sm:flex-initial justify-center flex items-center gap-2 sm:gap-2.5 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-black text-xs sm:text-sm shadow-xl shadow-sky-500/30 transition-all hover:scale-105 active:scale-95 border border-sky-400/30 text-center"
             >
               <Play className="w-4 h-4 fill-white" />
               <span>Watch Now</span>
@@ -180,7 +180,7 @@ export default function FeaturedHero({ animeList }: FeaturedHeroProps) {
 
             <Link
               href={`/anime/${current.id}`}
-              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#0c1527]/80 hover:bg-[#152545] text-white font-semibold text-sm border border-sky-500/20 backdrop-blur-xl transition-all shadow-md"
+              className="flex-1 sm:flex-initial justify-center flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-[#0c1527]/80 hover:bg-[#152545] text-white font-semibold text-xs sm:text-sm border border-sky-500/20 backdrop-blur-xl transition-all shadow-md text-center"
             >
               <Info className="w-4 h-4 text-sky-400" />
               <span>View Details</span>
@@ -189,12 +189,13 @@ export default function FeaturedHero({ animeList }: FeaturedHeroProps) {
             <button
               type="button"
               onClick={toggleWatchlist}
-              className={`p-3 rounded-2xl border transition-all ${
+              className={`p-2.5 sm:p-3 rounded-2xl border transition-all ${
                 inWatchlist
                   ? "bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/30"
                   : "bg-[#0c1527]/80 text-yugito-muted hover:text-white border-sky-500/20 hover:border-sky-400 backdrop-blur-xl"
               }`}
               title={inWatchlist ? "In Watchlist" : "Add to Watchlist"}
+              aria-label={inWatchlist ? "In Watchlist" : "Add to Watchlist"}
             >
               {inWatchlist ? <Check className="w-5 h-5 text-white" /> : <Bookmark className="w-5 h-5" />}
             </button>

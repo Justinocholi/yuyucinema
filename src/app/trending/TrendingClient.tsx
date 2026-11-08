@@ -96,9 +96,9 @@ export default function TrendingClient({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-20 space-y-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-20 space-y-6 sm:space-y-8">
       {/* Cinematic Glass Header Banner */}
-      <div className="relative rounded-3xl p-6 sm:p-8 bg-[#0c1527]/75 backdrop-blur-xl border border-sky-500/20 shadow-2xl overflow-hidden">
+      <div className="relative rounded-2xl sm:rounded-3xl p-5 sm:p-8 bg-[#0c1527]/75 backdrop-blur-xl border border-sky-500/20 shadow-2xl overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -112,7 +112,7 @@ export default function TrendingClient({
                 Updated in real-time
               </span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
               Trending Anime Top 100+
             </h1>
             <p className="text-xs sm:text-sm text-yugito-muted max-w-xl">
@@ -120,15 +120,15 @@ export default function TrendingClient({
             </p>
           </div>
 
-          <div className="text-left sm:text-right bg-sky-500/10 border border-sky-500/20 px-4 py-2.5 rounded-2xl backdrop-blur-md">
+          <div className="text-left sm:text-right bg-sky-500/10 border border-sky-500/20 px-4 py-2.5 rounded-2xl backdrop-blur-md self-start sm:self-auto">
             <div className="text-[11px] text-sky-300 uppercase tracking-wider font-semibold">Loaded Titles</div>
-            <div className="text-xl font-black text-white">{animeList.length} Anime</div>
+            <div className="text-lg sm:text-xl font-black text-white">{animeList.length} Anime</div>
           </div>
         </div>
       </div>
 
       {/* Category Pills Strip */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
         {categories.map((cat) => {
           const isActive = selectedCategory === cat.id;
           return (
@@ -136,7 +136,7 @@ export default function TrendingClient({
               key={cat.id}
               type="button"
               onClick={() => handleCategoryChange(cat)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                 isActive
                   ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/25 font-bold"
                   : "bg-[#101d36]/70 hover:bg-[#152545] text-yugito-muted hover:text-white border-sky-500/15"
@@ -162,7 +162,7 @@ export default function TrendingClient({
             type="button"
             disabled={isLoadingMore}
             onClick={handleLoadMore}
-            className="flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold text-sm shadow-xl shadow-sky-500/25 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 border border-sky-400/40"
+            className="flex items-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold text-xs sm:text-sm shadow-xl shadow-sky-500/25 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 border border-sky-400/40 text-center"
           >
             {isLoadingMore ? (
               <>
@@ -176,7 +176,7 @@ export default function TrendingClient({
               </>
             )}
           </button>
-          <p className="text-xs text-yugito-subtle">
+          <p className="text-[11px] sm:text-xs text-yugito-subtle text-center">
             Showing top {animeList.length} titles. Click to load the next 30 anime rankings.
           </p>
         </div>

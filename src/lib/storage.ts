@@ -78,6 +78,27 @@ export function saveWatchProgress(item: Omit<WatchHistoryItem, "updatedAt" | "pr
   }
 }
 
+export function saveEpisodeProgress(
+  animeId: number,
+  episodeNumber: number,
+  currentTime = 0,
+  duration = 0,
+  animeTitle = "Anime",
+  animeCover = ""
+): void {
+  const existing = getWatchHistoryItem(animeId);
+  saveWatchProgress({
+    animeId,
+    animeTitle: animeTitle !== "Anime" ? animeTitle : existing?.animeTitle || "Anime",
+    animeCover: animeCover || existing?.animeCover || "",
+    animeBanner: existing?.animeBanner,
+    episodeNumber,
+    episodeTitle: existing?.episodeTitle,
+    currentTime,
+    duration,
+  });
+}
+
 export function removeWatchHistoryItem(animeId: number): void {
   if (typeof window === "undefined") return;
   try {

@@ -36,18 +36,18 @@ export default function WatchlistPage() {
 
   if (!mounted) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-20 md:pb-16">
         <div className="h-8 bg-yugito-card rounded w-48 mb-6 animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-20 md:pb-16">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-yugito-accent/20 text-yugito-accent flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-yugito-accent/20 text-yugito-accent flex items-center justify-center shrink-0">
             <Bookmark className="w-5 h-5" />
           </div>
           <div>
@@ -62,7 +62,7 @@ export default function WatchlistPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-8 border-b border-yugito-border">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none pb-2 sm:pb-3 mb-6 sm:mb-8 border-b border-yugito-border">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const count =
@@ -75,7 +75,7 @@ export default function WatchlistPage() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold flex-shrink-0 transition-all ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-semibold shrink-0 transition-all ${
                 isActive
                   ? "bg-yugito-accent text-white shadow-md shadow-yugito-accent/30"
                   : "bg-yugito-card/80 text-yugito-muted hover:text-white hover:bg-yugito-surface border border-yugito-border/50"
@@ -119,6 +119,7 @@ export default function WatchlistPage() {
                     src={item.animeCover}
                     alt={item.animeTitle}
                     fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (

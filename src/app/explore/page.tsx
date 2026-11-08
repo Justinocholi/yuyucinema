@@ -118,9 +118,9 @@ function ExploreContent() {
     sort !== "TRENDING_DESC";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-20 md:pb-16 space-y-4 sm:space-y-6">
       {/* Title & Stats */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2 sm:mb-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Explore Anime
@@ -138,7 +138,7 @@ function ExploreContent() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-yugito-card/90 border border-yugito-border rounded-2xl p-4 mb-8 space-y-4 shadow-yugito">
+      <div className="bg-yugito-card/90 border border-yugito-border rounded-2xl p-3.5 sm:p-4 mb-6 space-y-4 shadow-yugito">
         {/* Search Input */}
         <div className="relative flex items-center">
           <input
@@ -146,9 +146,9 @@ function ExploreContent() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by title, character, or alternate name..."
-            className="w-full bg-yugito-surface text-yugito-text placeholder-yugito-muted/60 text-sm px-4 py-3 pl-11 rounded-xl border border-yugito-border focus:border-yugito-accent focus:outline-none transition-all"
+            className="w-full bg-yugito-surface text-yugito-text placeholder-yugito-muted/60 text-xs sm:text-sm px-4 py-2.5 sm:py-3 pl-10 sm:pl-11 rounded-xl border border-yugito-border focus:border-yugito-accent focus:outline-none transition-all"
           />
-          <Search className="w-5 h-5 text-yugito-muted absolute left-3.5" />
+          <Search className="w-4 h-4 sm:w-5 sm:h-5 text-yugito-muted absolute left-3.5" />
           {query && (
             <button
               type="button"
@@ -161,14 +161,14 @@ function ExploreContent() {
         </div>
 
         {/* Filter Dropdowns */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
           {/* Genre */}
           <div>
-            <label className="block text-yugito-muted font-medium mb-1">Genre</label>
+            <label className="block text-yugito-muted font-medium mb-1 text-[11px]">Genre</label>
             <select
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
-              className="w-full bg-yugito-surface text-yugito-text px-3 py-2 rounded-lg border border-yugito-border focus:border-yugito-accent focus:outline-none cursor-pointer"
+              className="w-full bg-yugito-surface text-yugito-text px-2.5 sm:px-3 py-2 rounded-lg border border-yugito-border focus:border-yugito-accent focus:outline-none cursor-pointer text-xs"
             >
               {GENRES.map((g) => (
                 <option key={g} value={g}>
@@ -180,11 +180,11 @@ function ExploreContent() {
 
           {/* Format */}
           <div>
-            <label className="block text-yugito-muted font-medium mb-1">Format</label>
+            <label className="block text-yugito-muted font-medium mb-1 text-[11px]">Format</label>
             <select
               value={format}
               onChange={(e) => setFormat(e.target.value)}
-              className="w-full bg-yugito-surface text-yugito-text px-3 py-2 rounded-lg border border-yugito-border focus:border-yugito-accent focus:outline-none cursor-pointer"
+              className="w-full bg-yugito-surface text-yugito-text px-2.5 sm:px-3 py-2 rounded-lg border border-yugito-border focus:border-yugito-accent focus:outline-none cursor-pointer text-xs"
             >
               {FORMATS.map((f) => (
                 <option key={f} value={f}>
@@ -196,11 +196,11 @@ function ExploreContent() {
 
           {/* Status */}
           <div>
-            <label className="block text-yugito-muted font-medium mb-1">Status</label>
+            <label className="block text-yugito-muted font-medium mb-1 text-[11px]">Status</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full bg-yugito-surface text-yugito-text px-3 py-2 rounded-lg border border-yugito-border focus:border-yugito-accent focus:outline-none cursor-pointer"
+              className="w-full bg-yugito-surface text-yugito-text px-2.5 sm:px-3 py-2 rounded-lg border border-yugito-border focus:border-yugito-accent focus:outline-none cursor-pointer text-xs"
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -212,11 +212,11 @@ function ExploreContent() {
 
           {/* Sort */}
           <div>
-            <label className="block text-yugito-muted font-medium mb-1">Sort By</label>
+            <label className="block text-yugito-muted font-medium mb-1 text-[11px]">Sort By</label>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="w-full bg-yugito-surface text-yugito-text px-3 py-2 rounded-lg border border-yugito-border focus:border-yugito-accent focus:outline-none cursor-pointer"
+              className="w-full bg-yugito-surface text-yugito-text px-2.5 sm:px-3 py-2 rounded-lg border border-yugito-border focus:border-yugito-accent focus:outline-none cursor-pointer text-xs"
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -277,7 +277,7 @@ export default function ExplorePage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-20 md:pb-16">
           <div className="h-8 bg-yugito-card rounded w-48 mb-6 animate-pulse" />
           <div className="h-28 bg-yugito-card rounded-2xl mb-8 animate-pulse" />
         </div>

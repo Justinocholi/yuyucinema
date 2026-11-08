@@ -26,7 +26,7 @@ import { Anime, EpisodeInfo, StreamSource } from "@/types/anime";
 import VideoPlayer from "@/components/player/VideoPlayer";
 import DownloadModal from "@/components/player/DownloadModal";
 import { PROVIDERS } from "@/lib/streaming";
-import { getWatchHistoryItem, getPlayerSettings, savePlayerSettings } from "@/lib/storage";
+import { getWatchHistoryItem, getPlayerSettings, savePlayerSettings, saveEpisodeProgress } from "@/lib/storage";
 
 interface WatchClientProps {
   anime: Anime;
@@ -147,6 +147,11 @@ export default function WatchClient({
     }
   }, []);
 
+  // Save progress
+  useEffect(() => {
+    saveEpisodeProgress(anime.id, episodeNumber, 0, 0, anime.title.english || anime.title.romaji || "Anime", anime.coverImage?.large || "");
+  }, [anime.id, episodeNumber, anime.title, anime.coverImage]);
+
   const handleProviderChange = (newProvider: string) => {
     setSelectedProvider(newProvider);
     fetchStream(newProvider, audio);
@@ -195,18 +200,18 @@ export default function WatchClient({
   const poster = anime.coverImage?.large || anime.coverImage?.medium || "";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-20 md:pb-16 space-y-4 sm:space-y-6">
       {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 text-xs text-yugito-muted mb-4 overflow-hidden">
-        <Link href="/" className="hover:text-white transition-colors">
+      <div className="flex items-center gap-2 text-xs text-yugito-muted overflow-x-auto scrollbar-none py-1">
+        <Link href="/" className="hover:text-white transition-colors shrink-0">
           Home
         </Link>
-        <span>/</span>
-        <Link href={`/anime/${anime.id}`} className="hover:text-white transition-colors truncate">
+        <span className="shrink-0">/</span>
+        <Link href={`/anime/${anime.id}`} className="hover:text-white transition-colors truncate shrink-0 max-w-[140px] sm:max-w-none">
           {animeTitle}
         </Link>
-        <span>/</span>
-        <span className="text-yugito-text font-semibold whitespace-nowrap">
+        <span className="shrink-0">/</span>
+        <span className="text-yugito-text font-semibold whitespace-nowrap shrink-0">
           {anime.format === "MOVIE" ? "Full Feature Film" : `Episode ${episodeNumber}`}
         </span>
       </div>
@@ -280,7 +285,7 @@ export default function WatchClient({
           </div>
 
           {/* Episode Title & Navigation Controls Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-yugito-card border border-yugito-border">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-4 rounded-2xl bg-yugito-card border border-yugito-border">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold px-2 py-0.5 rounded bg-yugito-accent text-white">
@@ -290,13 +295,13 @@ export default function WatchClient({
                   {audio === "dub" ? "English Dub" : "Japanese with English Subs"}
                 </span>
               </div>
-              <h1 className="text-lg font-bold text-white mt-1">
+              <h1 className="text-base sm:text-lg font-bold text-white mt-1">
                 {currentEp.title || (anime.format === "MOVIE" ? "Full Feature Film" : `Episode ${episodeNumber}`)}
               </h1>
             </div>
 
             {/* Action Buttons: Download & Prev / Next */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
               <button
                 type="button"
                 onClick={() => setDownloadOpen(true)}
@@ -348,19 +353,19 @@ export default function WatchClient({
           />
 
           {/* Source & Server Selector Box */}
-          <div className="p-4 rounded-2xl bg-yugito-card border border-yugito-border space-y-3">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-yugito-card border border-yugito-border space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-yugito-border/60">
               <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
                 <Server className="w-4 h-4 text-yugito-accent" />
                 <span>Streaming Server</span>
               </div>
-              <span className="text-[11px] text-yugito-muted">
+              <span className="text-[10px] sm:text-[11px] text-yugito-muted">
                 Active: <span className="text-yugito-accentLight font-semibold capitalize">{selectedProvider}</span>
               </span>
             </div>
 
             {/* Provider Buttons */}
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 sm:gap-2">
               {PROVIDERS.map((p) => {
                 const isSelected = selectedProvider === p.id;
                 const isStreambert = p.id.startsWith("streambert-");
@@ -369,17 +374,17 @@ export default function WatchClient({
                     key={p.id}
                     type="button"
                     onClick={() => handleProviderChange(p.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                    className={`flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       isSelected
                         ? "bg-yugito-accent/20 border-yugito-accent text-yugito-accentLight shadow-sm"
                         : "bg-yugito-surface border-yugito-border text-yugito-text hover:border-yugito-accent/50 hover:text-white"
                     }`}
                   >
-                    <span className={`w-2 h-2 rounded-full ${isSelected ? "bg-yugito-accent" : "bg-white/20"}`} />
-                    <span>{p.name}</span>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? "bg-yugito-accent" : "bg-white/20"}`} />
+                    <span className="truncate">{p.name}</span>
                     {isStreambert && (
-                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30">
-                        Streambert
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30 hidden xs:inline">
+                        VIP
                       </span>
                     )}
                   </button>
@@ -389,10 +394,10 @@ export default function WatchClient({
           </div>
 
           {/* Anime Synopsis & Link to Details */}
-          <div className="p-5 rounded-2xl bg-yugito-card border border-yugito-border space-y-3">
+          <div className="p-4 sm:p-5 rounded-2xl bg-yugito-card border border-yugito-border space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-base font-bold text-white">{animeTitle}</h3>
+                <h3 className="text-sm sm:text-base font-bold text-white">{animeTitle}</h3>
                 <div className="flex items-center gap-2 text-xs text-yugito-muted mt-1">
                   <span>{anime.format}</span>
                   <span>•</span>
@@ -404,7 +409,7 @@ export default function WatchClient({
 
               <Link
                 href={`/anime/${anime.id}`}
-                className="px-4 py-2 rounded-xl bg-yugito-surface hover:bg-yugito-border text-xs font-semibold text-white border border-yugito-border transition-colors whitespace-nowrap"
+                className="px-3 sm:px-4 py-2 rounded-xl bg-yugito-surface hover:bg-yugito-border text-xs font-semibold text-white border border-yugito-border transition-colors whitespace-nowrap"
               >
                 Anime Details
               </Link>
@@ -435,7 +440,7 @@ export default function WatchClient({
           </div>
 
           {/* Episode List Scroll Container */}
-          <div className="max-h-[600px] overflow-y-auto space-y-2 pr-1">
+          <div className="max-h-[360px] sm:max-h-[600px] overflow-y-auto space-y-2 pr-1">
             {filteredEpisodes.map((ep) => {
               const isCurrent = ep.number === episodeNumber;
               return (
@@ -449,7 +454,7 @@ export default function WatchClient({
                   }`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
                       isCurrent ? "bg-white/20 text-white" : "bg-yugito-card text-yugito-accentLight"
                     }`}
                   >
