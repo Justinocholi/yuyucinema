@@ -57,7 +57,7 @@ export default async function SportsWatchPage({ params }: SportsWatchPageProps) 
       streams: [
         {
           id: "channel-primary",
-          name: "Server 1 (Live Satellite Feed)",
+          name: "Server 1 (Primary High-Speed Feed)",
           url: channel.streamUrl,
           type: channel.type,
           quality: "1080p FHD Live",
@@ -65,7 +65,15 @@ export default async function SportsWatchPage({ params }: SportsWatchPageProps) 
         },
         {
           id: "channel-backup",
-          name: "Server 2 (Fox Sports News Live)",
+          name: "Server 2 (beIN CloudFront 1080p)",
+          url: "https://dc1644a9jazgj.cloudfront.net/beIN_Sports_Xtra_Espanol.m3u8",
+          type: "hls",
+          quality: "1080p FHD Feed",
+          isOfficial: true,
+        },
+        {
+          id: "channel-backup-2",
+          name: "Server 3 (Fox Sports Football Live)",
           url: "https://skynewsau-live-premium.akamaized.net/hls/live/2105307/foxsportsnews/live_1080p.m3u8",
           type: "hls",
           quality: "1080p FHD Feed",
@@ -77,7 +85,7 @@ export default async function SportsWatchPage({ params }: SportsWatchPageProps) 
     return <SportsWatchClient event={channelEvent} relatedEvents={allEvents.slice(0, 6)} />;
   }
 
-  const event = await getSportsEventById(eventId);
+  const event = allEvents.find((e) => e.id === eventId);
   if (!event) {
     notFound();
   }

@@ -158,10 +158,19 @@ export default function SportsPlayer({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        backBufferLength: 30,
-        maxBufferLength: 15,
-        maxMaxBufferLength: 30,
-        startLevel: -1,
+        backBufferLength: 10,
+        maxBufferLength: 6,
+        maxMaxBufferLength: 12,
+        maxBufferSize: 25 * 1000 * 1000,
+        maxBufferHole: 0.5,
+        highBufferWatchdogPeriod: 1,
+        nudgeOffset: 0.1,
+        nudgeMaxRetry: 5,
+        manifestLoadingTimeOut: 3500,
+        manifestLoadingMaxRetry: 2,
+        levelLoadingTimeOut: 3500,
+        fragLoadingTimeOut: 5000,
+        startLevel: 0, // Instant start with the fastest initial segment, automatically upscaling to 1080p
       });
       hlsRef.current = hls;
 
@@ -232,7 +241,16 @@ export default function SportsPlayer({
     };
     video.addEventListener("error", onNativeError);
 
+    // Watchdog: If buffering/connecting exceeds 6 seconds, automatically attempt next fast server
+    const connectWatchdog = setTimeout(() => {
+      if (video && video.paused && !isPlaying && activeStreamIndex + 1 < streams.length) {
+        console.warn(`[Yuyu Football] Stream connection taking longer than 6s on Server ${activeStreamIndex + 1}. Auto-switching to Server ${activeStreamIndex + 2}`);
+        onSelectStream(activeStreamIndex + 1);
+      }
+    }, 6000);
+
     return () => {
+      clearTimeout(connectWatchdog);
       video.removeEventListener("error", onNativeError);
       if (hlsRef.current) {
         hlsRef.current.destroy();
@@ -353,6 +371,8 @@ export default function SportsPlayer({
             setIsLoading(false);
             setIsPlaying(true);
           }}
+          preload="auto"
+          autoPlay
           playsInline
           className="w-full h-full object-contain cursor-pointer"
         />

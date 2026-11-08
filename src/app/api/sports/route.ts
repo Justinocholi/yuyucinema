@@ -32,8 +32,24 @@ export async function GET(req: NextRequest) {
     const allEvents = await fetchLiveSportsEvents();
     let filtered = allEvents;
 
-    if (category && category !== "all") {
-      filtered = filtered.filter((e) => e.sport === category);
+    if (category && category !== "all" && category !== "football") {
+      if (category === "epl") {
+        filtered = filtered.filter((e) => e.competitionId === "eng.1" || e.competition.toLowerCase().includes("premier"));
+      } else if (category === "ucl") {
+        filtered = filtered.filter((e) => e.competitionId === "uefa.champions" || e.competition.toLowerCase().includes("champions"));
+      } else if (category === "uel") {
+        filtered = filtered.filter((e) => e.competitionId === "uefa.europa" || e.competition.toLowerCase().includes("europa"));
+      } else if (category === "laliga") {
+        filtered = filtered.filter((e) => e.competitionId === "esp.1" || e.competition.toLowerCase().includes("la liga") || e.competition.toLowerCase().includes("spanish"));
+      } else if (category === "seriea") {
+        filtered = filtered.filter((e) => e.competitionId === "ita.1" || e.competition.toLowerCase().includes("serie a") || e.competition.toLowerCase().includes("italian"));
+      } else if (category === "bundesliga") {
+        filtered = filtered.filter((e) => e.competitionId === "ger.1" || e.competition.toLowerCase().includes("bundesliga") || e.competition.toLowerCase().includes("german"));
+      } else if (category === "ligue1") {
+        filtered = filtered.filter((e) => e.competitionId === "fra.1" || e.competition.toLowerCase().includes("ligue 1") || e.competition.toLowerCase().includes("french"));
+      } else {
+        filtered = filtered.filter((e) => e.sport === category);
+      }
     }
 
     if (competition && competition !== "all") {

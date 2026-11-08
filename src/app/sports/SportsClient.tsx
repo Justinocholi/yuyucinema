@@ -34,27 +34,47 @@ interface SportsClientProps {
 
 export default function SportsClient({ initialEvents, channels }: SportsClientProps) {
   const [events, setEvents] = useState<SportsEvent[]>(initialEvents);
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("football");
   const [selectedCompetition, setSelectedCompetition] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusTab, setStatusTab] = useState<"all" | "live" | "upcoming">("all");
 
-  // Dynamic Featured Hero Event: prioritized by LIVE status and isFeatured flag
+  // Dynamic Featured Hero Event: prioritized by Premier League or Champions League LIVE status
   const featuredEvent = useMemo(() => {
-    const liveFeatured = events.find((e) => e.status === "LIVE" && e.isFeatured);
-    if (liveFeatured) return liveFeatured;
+    const liveEPLorUCL = events.find(
+      (e) => e.status === "LIVE" && (e.competitionId === "eng.1" || e.competitionId === "uefa.champions")
+    );
+    if (liveEPLorUCL) return liveEPLorUCL;
     const anyLive = events.find((e) => e.status === "LIVE");
     if (anyLive) return anyLive;
-    const upcomingFeatured = events.find((e) => e.status === "UPCOMING" && e.isFeatured);
-    if (upcomingFeatured) return upcomingFeatured;
+    const upcomingEPL = events.find(
+      (e) => e.status === "UPCOMING" && (e.competitionId === "eng.1" || e.competitionId === "uefa.champions")
+    );
+    if (upcomingEPL) return upcomingEPL;
     return events[0] || null;
   }, [events]);
 
   // Filtered Events
   const filteredEvents = useMemo(() => {
     return events.filter((ev) => {
-      // Category filter
-      if (selectedCategory !== "all" && ev.sport !== selectedCategory) return false;
+      // Category filter (support quick league pills: EPL, UCL, UEL, La Liga, Serie A, etc.)
+      if (selectedCategory === "epl") {
+        if (ev.competitionId !== "eng.1" && !ev.competition.toLowerCase().includes("premier")) return false;
+      } else if (selectedCategory === "ucl") {
+        if (ev.competitionId !== "uefa.champions" && !ev.competition.toLowerCase().includes("champions")) return false;
+      } else if (selectedCategory === "uel") {
+        if (ev.competitionId !== "uefa.europa" && !ev.competition.toLowerCase().includes("europa")) return false;
+      } else if (selectedCategory === "laliga") {
+        if (ev.competitionId !== "esp.1" && !ev.competition.toLowerCase().includes("la liga") && !ev.competition.toLowerCase().includes("spanish")) return false;
+      } else if (selectedCategory === "seriea") {
+        if (ev.competitionId !== "ita.1" && !ev.competition.toLowerCase().includes("serie a") && !ev.competition.toLowerCase().includes("italian")) return false;
+      } else if (selectedCategory === "bundesliga") {
+        if (ev.competitionId !== "ger.1" && !ev.competition.toLowerCase().includes("bundesliga") && !ev.competition.toLowerCase().includes("german")) return false;
+      } else if (selectedCategory === "ligue1") {
+        if (ev.competitionId !== "fra.1" && !ev.competition.toLowerCase().includes("ligue 1") && !ev.competition.toLowerCase().includes("french")) return false;
+      } else if (selectedCategory !== "football" && selectedCategory !== "all") {
+        if (ev.sport !== selectedCategory) return false;
+      }
 
       // Competition filter
       if (selectedCompetition !== "all" && ev.competitionId !== selectedCompetition) return false;
@@ -241,32 +261,32 @@ export default function SportsClient({ initialEvents, channels }: SportsClientPr
               <div className="flex items-center justify-between pb-2 border-b border-sky-500/15 text-xs">
                 <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                   <Radio className="w-3.5 h-3.5 text-sky-400" />
-                  <span>Streaming Relay</span>
+                  <span>Football Relay</span>
                 </span>
-                <span className="text-[10px] font-bold text-emerald-400">3 Servers Ready</span>
+                <span className="text-[10px] font-bold text-emerald-400">5 Servers Ready</span>
               </div>
 
               <div className="space-y-2 text-xs">
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-white">Server 1 (VIP Ultra HD)</div>
-                    <div className="text-[10px] text-yugito-muted">1080p FHD 60FPS Direct Stream</div>
+                    <div className="font-bold text-white">Server 1 (beIN Premier 1080p)</div>
+                    <div className="text-[10px] text-yugito-muted">Fast CDN • Zero Buffering</div>
                   </div>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-white">Server 2 (Global Edge CDN)</div>
-                    <div className="text-[10px] text-yugito-muted">High Bitrate Low Latency</div>
+                    <div className="font-bold text-white">Server 2 (beIN CloudFront)</div>
+                    <div className="text-[10px] text-yugito-muted">1080p FHD Global Edge</div>
                   </div>
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-white">Server 3 (CBS Golazo Live)</div>
-                    <div className="text-[10px] text-yugito-muted">24/7 Live Broadcast Network</div>
+                    <div className="font-bold text-white">Server 3 (Fox Sports Live)</div>
+                    <div className="text-[10px] text-yugito-muted">Continuous Football Broadcast</div>
                   </div>
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
@@ -505,17 +525,17 @@ export default function SportsClient({ initialEvents, channels }: SportsClientPr
       )}
 
       {/* 
-        24/7 AUTHORIZED SPORTS BROADCASTING CHANNELS
+        24/7 AUTHORIZED FOOTBALL BROADCASTING CHANNELS
       */}
       <section className="space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-sky-500/20">
           <div className="flex items-center gap-2">
             <Radio className="w-5 h-5 text-sky-400" />
             <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wider">
-              24/7 Sports TV Channels
+              24/7 Live Football TV Channels
             </h2>
           </div>
-          <span className="text-xs font-bold text-sky-300">Continuous Satellite Feeds</span>
+          <span className="text-xs font-bold text-sky-300">Continuous High-Speed Satellite & CDN Feeds</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4">
