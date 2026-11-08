@@ -32,15 +32,23 @@ export default function SportsWatchClient({ event, relatedEvents }: SportsWatchC
   const streams = event.streams && event.streams.length > 0 ? event.streams : [
     {
       id: "srv-1",
-      name: "Server 1 (VIP Ultra HD)",
-      url: "https://cbsn-us-cedexis.cbsnstream.cbsnews.com/out/v1/55a864888f334590ab223048b61cf446/master.m3u8",
+      name: "Server 1 (beIN SPORTS XTRA 1080p)",
+      url: "https://bein-xtra-bein.amagi.tv/playlist.m3u8",
       type: "hls" as const,
       quality: "1080p FHD",
       isOfficial: true,
     },
     {
       id: "srv-2",
-      name: "Server 2 (Global Sports CDN)",
+      name: "Server 2 (Fox Sports Live 1080p)",
+      url: "https://skynewsau-live-premium.akamaized.net/hls/live/2105307/foxsportsnews/live_1080p.m3u8",
+      type: "hls" as const,
+      quality: "1080p HD",
+      isOfficial: true,
+    },
+    {
+      id: "srv-3",
+      name: "Server 3 (Red Bull TV Live)",
       url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
       type: "hls" as const,
       quality: "720p HD",

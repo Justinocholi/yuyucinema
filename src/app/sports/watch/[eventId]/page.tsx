@@ -65,10 +65,10 @@ export default async function SportsWatchPage({ params }: SportsWatchPageProps) 
         },
         {
           id: "channel-backup",
-          name: "Server 2 (Global Sports CDN)",
-          url: "https://stream.ads.ottera.tv/playlist.m3u8?network_id=464",
+          name: "Server 2 (Fox Sports News Live)",
+          url: "https://skynewsau-live-premium.akamaized.net/hls/live/2105307/foxsportsnews/live_1080p.m3u8",
           type: "hls",
-          quality: "720p HD Feed",
+          quality: "1080p FHD Feed",
           isOfficial: true,
         },
       ],

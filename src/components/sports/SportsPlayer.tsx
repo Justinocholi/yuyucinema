@@ -132,6 +132,28 @@ export default function SportsPlayer({
     setIsLoading(true);
     const streamUrl = activeStream.url;
 
+    // Helper for robust playback attempt (fallback to muted autoplay if browser blocks audio)
+    const attemptPlay = () => {
+      if (!video) return;
+      video
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((playErr) => {
+          console.warn("[Yuyu Sports] Unmuted play blocked by browser, falling back to muted autoplay:", playErr);
+          video.muted = true;
+          setIsMuted(true);
+          video
+            .play()
+            .then(() => setIsPlaying(true))
+            .catch((mutedErr) => {
+              console.warn("[Yuyu Sports] Autoplay blocked, waiting for user interaction:", mutedErr);
+              setIsPlaying(false);
+            });
+        });
+    };
+
     if (Hls.isSupported() && (streamUrl.includes(".m3u8") || streamUrl.includes("master") || streamUrl.includes("playlist"))) {
       const hls = new Hls({
         enableWorker: true,
@@ -155,11 +177,7 @@ export default function SportsPlayer({
           }))
           .sort((a, b) => b.height - a.height);
         setAvailableQualities(qualities);
-
-        video
-          .play()
-          .then(() => setIsPlaying(true))
-          .catch(() => setIsPlaying(false));
+        attemptPlay();
       });
 
       hls.on(Hls.Events.ERROR, (_, data) => {
@@ -174,34 +192,54 @@ export default function SportsPlayer({
               break;
             default:
               hls.destroy();
-              setHasError(true);
-              setErrorDetails("Live stream connection interrupted. Try switching to Server 2 or 3.");
-              setIsLoading(false);
+              if (activeStreamIndex + 1 < streams.length) {
+                console.warn(`[Yuyu Sports] Server ${activeStreamIndex + 1} failed. Auto-switching to Server ${activeStreamIndex + 2}`);
+                onSelectStream(activeStreamIndex + 1);
+              } else {
+                setHasError(true);
+                setErrorDetails("Live stream connection interrupted. Try switching to another server below.");
+                setIsLoading(false);
+              }
               break;
           }
         }
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = streamUrl;
-      video.addEventListener("loadedmetadata", () => {
+      const onLoaded = () => {
         setIsLoading(false);
-        video.play().then(() => setIsPlaying(true)).catch(() => {});
-      });
+        attemptPlay();
+      };
+      video.addEventListener("loadedmetadata", onLoaded, { once: true });
     } else {
       video.src = streamUrl;
-      video.addEventListener("loadedmetadata", () => {
+      const onLoaded = () => {
         setIsLoading(false);
-        video.play().then(() => setIsPlaying(true)).catch(() => {});
-      });
+        attemptPlay();
+      };
+      video.addEventListener("loadedmetadata", onLoaded, { once: true });
     }
 
+    const onNativeError = () => {
+      console.warn("[Yuyu Sports] Native video error on stream:", streamUrl);
+      if (activeStreamIndex + 1 < streams.length) {
+        onSelectStream(activeStreamIndex + 1);
+      } else {
+        setIsLoading(false);
+        setHasError(true);
+        setErrorDetails("Could not play the live sports stream on this server. Please choose another server.");
+      }
+    };
+    video.addEventListener("error", onNativeError);
+
     return () => {
+      video.removeEventListener("error", onNativeError);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
     };
-  }, [activeStream, isEmbed]);
+  }, [activeStream, isEmbed, activeStreamIndex, onSelectStream, streams.length]);
 
   const togglePlay = useCallback(() => {
     if (isEmbed) return;
@@ -327,6 +365,42 @@ export default function SportsPlayer({
           <p className="text-xs font-bold text-white tracking-wide">Connecting to Live Sports Feed...</p>
           <span className="text-[10px] text-sky-400 mt-1">{activeStream.name}</span>
         </div>
+      )}
+
+      {/* Center Play Button Overlay when Paused */}
+      {!isPlaying && !isLoading && !hasError && !isEmbed && (
+        <div
+          onClick={togglePlay}
+          className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px] cursor-pointer z-10 transition-all hover:bg-black/30 group/playbtn"
+        >
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-sky-500 to-cyan-400 p-0.5 shadow-2xl shadow-sky-500/40 group-hover/playbtn:scale-110 active:scale-95 transition-transform flex items-center justify-center">
+            <div className="w-full h-full rounded-full bg-[#0a1224]/85 backdrop-blur-md flex items-center justify-center pl-1">
+              <Play className="w-7 h-7 sm:w-9 sm:h-9 text-white fill-white" />
+            </div>
+          </div>
+          <span className="mt-3 px-3.5 py-1.5 rounded-full bg-black/75 border border-white/10 text-xs font-bold text-white drop-shadow shadow-lg">
+            Click to Watch Live Stream
+          </span>
+        </div>
+      )}
+
+      {/* Tap to Unmute Overlay Button */}
+      {isMuted && isPlaying && !isEmbed && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (videoRef.current) {
+              videoRef.current.muted = false;
+              setIsMuted(false);
+              videoRef.current.volume = volume > 0 ? volume : 1;
+            }
+          }}
+          className="absolute bottom-16 left-4 z-20 flex items-center gap-2 px-3.5 py-2 rounded-full bg-sky-500/90 hover:bg-sky-400 text-white text-xs font-bold shadow-xl backdrop-blur-md transition-all active:scale-95 animate-pulse"
+        >
+          <VolumeX className="w-4 h-4 text-white" />
+          <span>Tap to Unmute 🔊</span>
+        </button>
       )}
 
       {/* Playback Error Overlay with Quick Server Retry */}
