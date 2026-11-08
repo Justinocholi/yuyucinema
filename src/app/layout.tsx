@@ -5,10 +5,10 @@ import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import Footer from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "Yugito Cinema — Anime, Movies, TV Series & Live Sports Streaming",
+  title: "Yugito Cinema — Anime, Movies & TV Series Streaming",
   description:
-    "Discover, track, and stream anime, movies, TV series, and live sports in 1080p FHD with 24/7 channels, multi-audio dub/sub, and direct download.",
-  keywords: ["anime", "movies", "tv series", "live sports", "sports streaming", "streaming", "yugito", "watch anime", "streambert"],
+    "Discover, track, and stream anime, movies, and TV series in 1080p FHD with 24/7 channels, multi-audio dub/sub, and direct download.",
+  keywords: ["anime", "movies", "tv series", "streaming", "yugito", "watch anime", "streambert"],
   icons: {
     icon: "/logo.jpg",
     apple: "/logo.jpg",

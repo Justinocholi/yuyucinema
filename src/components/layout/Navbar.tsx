@@ -19,7 +19,6 @@ import {
   Tv,
   Film,
   Clapperboard,
-  Trophy,
 } from "lucide-react";
 import { getWatchlist } from "@/lib/storage";
 
@@ -80,7 +79,6 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Home", href: "/", icon: Home },
-    { name: "Sports", href: "/sports", icon: Trophy, isSports: true },
     { name: "Movies", href: "/movies", icon: Film },
     { name: "TV Series", href: "/tv", icon: Clapperboard },
     { name: "Anime", href: "/explore", icon: Compass },
@@ -142,12 +140,6 @@ export default function Navbar() {
                     >
                       <Icon className={`w-3.5 h-3.5 ${isActive ? "text-sky-400" : ""}`} />
                       <span>{link.name}</span>
-                      {link.isSports && (
-                        <span className="flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          LIVE
-                        </span>
-                      )}
                       {link.isLive && (
                         <span className="flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
@@ -200,7 +192,7 @@ export default function Navbar() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search movies, sports, anime... (/)"
+                  placeholder="Search movies, tv series, anime... (/)"
                   className="w-44 md:w-56 lg:w-64 bg-yugito-surface/80 hover:bg-yugito-surface text-yugito-text placeholder-yugito-muted/60 text-xs sm:text-sm px-3.5 py-2 pl-9 rounded-full border border-yugito-border focus:border-yugito-accent focus:w-72 focus:outline-none transition-all"
                 />
                 <Search className="w-4 h-4 text-yugito-muted absolute left-3 pointer-events-none" />
@@ -257,13 +249,6 @@ export default function Navbar() {
                         <Sparkles className="w-3 h-3" /> Local Storage Active
                       </div>
                     </div>
-                    <Link
-                      href="/sports"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-yugito-muted hover:text-white hover:bg-yugito-surface"
-                    >
-                      <Trophy className="w-4 h-4 text-sky-400" /> Live Sports Hub
-                    </Link>
                     <Link
                       href="/watchlist"
                       onClick={() => setProfileOpen(false)}
@@ -355,12 +340,6 @@ export default function Navbar() {
                     <div className="flex items-center gap-3">
                       <Icon className={`w-4 h-4 ${isActive ? "text-sky-400" : ""}`} />
                       <span>{link.name}</span>
-                      {link.isSports && (
-                        <span className="flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          LIVE
-                        </span>
-                      )}
                       {link.isLive && (
                         <span className="flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />

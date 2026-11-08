@@ -1,41 +1,24 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
   Film,
   Compass,
-  Trophy,
+  Clapperboard,
   Tv,
 } from "lucide-react";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const [hasLiveSports, setHasLiveSports] = useState(true);
-
-  // Periodic check if there are live sports events
-  useEffect(() => {
-    const checkLive = async () => {
-      try {
-        const res = await fetch("/api/sports?status=live");
-        const d = await res.json();
-        if (d.liveCount !== undefined) {
-          setHasLiveSports(d.liveCount > 0);
-        }
-      } catch {}
-    };
-    checkLive();
-    const interval = setInterval(checkLive, 90000);
-    return () => clearInterval(interval);
-  }, []);
 
   const items = [
     { name: "Home", href: "/", icon: Home },
     { name: "Movies", href: "/movies", icon: Film },
+    { name: "TV Series", href: "/tv", icon: Clapperboard },
     { name: "Anime", href: "/explore", icon: Compass },
-    { name: "Sports", href: "/sports", icon: Trophy, hasBadge: hasLiveSports, badgeText: "LIVE" },
     { name: "Live TV", href: "/channels", icon: Tv, hasBadge: true, badgeText: "24/7" },
   ];
 
@@ -60,11 +43,7 @@ export default function MobileBottomNav() {
               <div className="relative">
                 <Icon className={`w-5 h-5 ${isActive ? "text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]" : ""}`} />
                 {item.hasBadge && (
-                  <span className={`absolute -top-1 -right-2 text-[8px] font-black uppercase px-1 rounded-full ${
-                    item.badgeText === "LIVE"
-                      ? "bg-red-500 text-white animate-pulse"
-                      : "bg-sky-500/80 text-white"
-                  }`}>
+                  <span className="absolute -top-1 -right-2 text-[8px] font-black uppercase px-1 rounded-full bg-red-500 text-white animate-pulse">
                     {item.badgeText}
                   </span>
                 )}
