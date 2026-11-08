@@ -16,6 +16,7 @@ export interface TMDBMedia {
   runtime?: number;
   numberOfSeasons?: number;
   numberOfEpisodes?: number;
+  recommendations?: TMDBMedia[];
   seasons?: Array<{
     id: number;
     name: string;
@@ -103,6 +104,9 @@ function mapTMDBItem(item: any, type: "movie" | "tv" = "movie"): TMDBMedia {
     runtime: item.runtime,
     numberOfSeasons: item.number_of_seasons,
     numberOfEpisodes: item.number_of_episodes,
+    recommendations: (item.recommendations?.results || []).map((r: any) =>
+      mapTMDBItem(r, isMovie ? "movie" : "tv")
+    ),
     seasons: (item.seasons || []).map((s: any) => ({
       id: s.id,
       name: s.name,
@@ -236,6 +240,53 @@ export async function getMovieDetails(id: number): Promise<TMDBMedia | null> {
   }
 }
 
+// 6b. Fetch Movie Recommendations & Similar Titles by Genre
+export async function getMovieRecommendations(
+  id: number,
+  genreIds?: number[],
+  limit = 12
+): Promise<TMDBMedia[]> {
+  try {
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/movie/${id}/recommendations?api_key=${TMDB_API_KEY}&page=1`
+    );
+    let results = (data.results || []).map((m: any) => mapTMDBItem(m, "movie"));
+
+    if (results.length < 6) {
+      try {
+        const simData = await cachedFetch(
+          `${TMDB_BASE_URL}/movie/${id}/similar?api_key=${TMDB_API_KEY}&page=1`
+        );
+        const simResults = (simData.results || []).map((m: any) => mapTMDBItem(m, "movie"));
+        results = [
+          ...results,
+          ...simResults.filter((s: TMDBMedia) => !results.some((r: TMDBMedia) => r.id === s.id)),
+        ];
+      } catch {}
+    }
+
+    if (results.length < 6 && genreIds && genreIds.length > 0) {
+      try {
+        const genreId = genreIds[0];
+        const discData = await cachedFetch(
+          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=popularity.desc&page=1`
+        );
+        const discResults = (discData.results || []).map((m: any) => mapTMDBItem(m, "movie"));
+        results = [
+          ...results,
+          ...discResults.filter(
+            (s: TMDBMedia) => s.id !== id && !results.some((r: TMDBMedia) => r.id === s.id)
+          ),
+        ];
+      } catch {}
+    }
+
+    return results.slice(0, limit);
+  } catch {
+    return FALLBACK_MOVIES.filter((m) => m.id !== id).slice(0, limit);
+  }
+}
+
 // 7. Fetch Trending TV Series with Pagination
 export async function getTrendingTV(page = 1): Promise<TMDBPaginatedResult> {
   try {
@@ -342,6 +393,53 @@ export async function getTVDetails(id: number): Promise<TMDBMedia | null> {
     return mapTMDBItem(data, "tv");
   } catch {
     return FALLBACK_TV.find((t) => t.id === id) || null;
+  }
+}
+
+// 12b. Fetch TV Show Recommendations & Similar Titles by Genre
+export async function getTVRecommendations(
+  id: number,
+  genreIds?: number[],
+  limit = 12
+): Promise<TMDBMedia[]> {
+  try {
+    const data = await cachedFetch(
+      `${TMDB_BASE_URL}/tv/${id}/recommendations?api_key=${TMDB_API_KEY}&page=1`
+    );
+    let results = (data.results || []).map((t: any) => mapTMDBItem(t, "tv"));
+
+    if (results.length < 6) {
+      try {
+        const simData = await cachedFetch(
+          `${TMDB_BASE_URL}/tv/${id}/similar?api_key=${TMDB_API_KEY}&page=1`
+        );
+        const simResults = (simData.results || []).map((t: any) => mapTMDBItem(t, "tv"));
+        results = [
+          ...results,
+          ...simResults.filter((s: TMDBMedia) => !results.some((r: TMDBMedia) => r.id === s.id)),
+        ];
+      } catch {}
+    }
+
+    if (results.length < 6 && genreIds && genreIds.length > 0) {
+      try {
+        const genreId = genreIds[0];
+        const discData = await cachedFetch(
+          `${TMDB_BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=popularity.desc&page=1`
+        );
+        const discResults = (discData.results || []).map((t: any) => mapTMDBItem(t, "tv"));
+        results = [
+          ...results,
+          ...discResults.filter(
+            (s: TMDBMedia) => s.id !== id && !results.some((r: TMDBMedia) => r.id === s.id)
+          ),
+        ];
+      } catch {}
+    }
+
+    return results.slice(0, limit);
+  } catch {
+    return FALLBACK_TV.filter((t) => t.id !== id).slice(0, limit);
   }
 }
 

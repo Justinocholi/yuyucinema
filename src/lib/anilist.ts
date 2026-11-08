@@ -415,3 +415,23 @@ export async function getWeeklySchedule(): Promise<ScheduleDay[]> {
     return [];
   }
 }
+
+
+// 9. Fetch Anime Recommendations by Genre
+export async function getAnimeRecommendationsByGenre(
+  genre: string,
+  excludeId?: number,
+  limit = 12
+): Promise<Anime[]> {
+  try {
+    const res = await searchAnime({
+      genre: genre === "All" ? undefined : genre,
+      sort: "SCORE_DESC",
+      perPage: limit + 2,
+    });
+    return (res.media || []).filter((a) => a.id !== excludeId).slice(0, limit);
+  } catch (err) {
+    console.error("Error fetching anime recommendations by genre:", err);
+    return [];
+  }
+}

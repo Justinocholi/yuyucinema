@@ -25,6 +25,7 @@ import {
 import { Anime, EpisodeInfo, StreamSource } from "@/types/anime";
 import VideoPlayer from "@/components/player/VideoPlayer";
 import DownloadModal from "@/components/player/DownloadModal";
+import MediaRecommendations from "@/components/recommendations/MediaRecommendations";
 import { PROVIDERS } from "@/lib/streaming";
 import { getWatchHistoryItem, getPlayerSettings, savePlayerSettings, saveEpisodeProgress } from "@/lib/storage";
 
@@ -477,6 +478,17 @@ export default function WatchClient({
           </div>
         </div>
       </div>
+
+      {/* Genre-based Recommendations Section */}
+      <MediaRecommendations
+        type="anime"
+        currentId={anime.id}
+        currentTitle={anime.title.english || anime.title.romaji || anime.title.userPreferred || "Anime"}
+        currentGenres={anime.genres || []}
+        initialItems={(anime.recommendations?.nodes || []).map((n) => n.mediaRecommendation).filter(Boolean)}
+        title="Recommended Anime For You"
+        subtitle="Discover more anime with similar genres & audience acclaim"
+      />
     </div>
   );
 }

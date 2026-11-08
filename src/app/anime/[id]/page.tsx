@@ -18,6 +18,7 @@ import { fetchEpisodesFromAPI } from "@/lib/streaming";
 import { formatScore, cleanHtmlDescription } from "@/lib/utils";
 import EpisodeListClient from "./EpisodeListClient";
 import DetailWatchlistButton from "./DetailWatchlistButton";
+import MediaRecommendations from "@/components/recommendations/MediaRecommendations";
 
 export const revalidate = 300;
 
@@ -238,6 +239,16 @@ export default async function AnimeDetailPage({ params }: AnimeDetailPageProps) 
             </div>
           </div>
         )}
+        {/* Genre-based Recommendations Section */}
+        <MediaRecommendations
+          type="anime"
+          currentId={anime.id}
+          currentTitle={title}
+          currentGenres={anime.genres || []}
+          initialItems={(anime.recommendations?.nodes || []).map((n) => n.mediaRecommendation).filter(Boolean)}
+          title="Recommended Anime For You"
+          subtitle="Explore series matching these genres & themes"
+        />
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { getTVDetails } from "@/lib/tmdb";
+import { getTVDetails, getTVRecommendations } from "@/lib/tmdb";
 import WatchTVClient from "./WatchTVClient";
 
 export const revalidate = 300;
@@ -35,11 +35,18 @@ export default async function WatchTVPage({ params }: WatchTVPageProps) {
   const show = await getTVDetails(showId);
   if (!show) notFound();
 
+  let recommendations = show.recommendations || [];
+  if (recommendations.length === 0) {
+    const genreIds = show.genres?.map((g) => g.id);
+    recommendations = await getTVRecommendations(showId, genreIds, 12);
+  }
+
   return (
     <WatchTVClient
       show={show}
       seasonNumber={seasonNumber}
       episodeNumber={episodeNumber}
+      initialRecommendations={recommendations}
     />
   );
 }

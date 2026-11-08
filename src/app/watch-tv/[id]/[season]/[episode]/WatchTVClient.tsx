@@ -23,12 +23,14 @@ import {
 } from "lucide-react";
 import { TMDBMedia, getTMDBImageUrl } from "@/lib/tmdb";
 import DownloadModal from "@/components/player/DownloadModal";
+import MediaRecommendations from "@/components/recommendations/MediaRecommendations";
 import { saveMediaProgress } from "@/lib/storage";
 
 interface WatchTVClientProps {
   show: TMDBMedia;
   seasonNumber: number;
   episodeNumber: number;
+  initialRecommendations?: TMDBMedia[];
 }
 
 const TV_PROVIDERS = [
@@ -86,6 +88,7 @@ export default function WatchTVClient({
   show,
   seasonNumber,
   episodeNumber,
+  initialRecommendations = [],
 }: WatchTVClientProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -504,6 +507,17 @@ export default function WatchTVClient({
           </div>
         </div>
       </div>
+
+      {/* Genre-based Recommendations Section */}
+      <MediaRecommendations
+        type="tv"
+        currentId={show.id}
+        currentTitle={show.title || show.name || "TV Series"}
+        currentGenres={show.genres?.map((g) => g.name) || []}
+        initialItems={initialRecommendations.length > 0 ? initialRecommendations : show.recommendations || []}
+        title="Recommended TV Shows For You"
+        subtitle="Explore more television series matching this genre"
+      />
 
       <DownloadModal
         isOpen={downloadOpen}

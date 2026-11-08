@@ -26,9 +26,11 @@ import {
 import { TMDBMedia, getTMDBImageUrl } from "@/lib/tmdb";
 import DownloadModal from "@/components/player/DownloadModal";
 import { saveMediaProgress, getMediaProgress } from "@/lib/storage";
+import MediaRecommendations from "@/components/recommendations/MediaRecommendations";
 
 interface WatchMovieClientProps {
   movie: TMDBMedia;
+  initialRecommendations?: TMDBMedia[];
 }
 
 const MOVIE_PROVIDERS = [
@@ -76,7 +78,7 @@ const MOVIE_PROVIDERS = [
   },
 ];
 
-export default function WatchMovieClient({ movie }: WatchMovieClientProps) {
+export default function WatchMovieClient({ movie, initialRecommendations = [] }: WatchMovieClientProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [providerIndex, setProviderIndex] = useState(0);
   const [downloadOpen, setDownloadOpen] = useState(false);
@@ -459,6 +461,17 @@ export default function WatchMovieClient({ movie }: WatchMovieClientProps) {
           </div>
         </div>
       </div>
+
+      {/* Genre-based Recommendations Section */}
+      <MediaRecommendations
+        type="movie"
+        currentId={movie.id}
+        currentTitle={movie.title}
+        currentGenres={movie.genres?.map((g) => g.name) || []}
+        initialItems={initialRecommendations.length > 0 ? initialRecommendations : movie.recommendations || []}
+        title="Recommended Movies For You"
+        subtitle="Explore more cinema matching this genre"
+      />
 
       {/* Download Modal */}
       <DownloadModal
